@@ -1,0 +1,4900 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tales from a Broken World — Interactive Timeline</title>
+<style>
+  :root {
+    --bg: #0b1020;
+    --panel: rgba(18, 27, 49, 0.78);
+    --panel-strong: rgba(25, 38, 68, 0.92);
+    --line: rgba(155, 201, 255, 0.28);
+    --text: #edf6ff;
+    --muted: #a8bad2;
+    --soft: #6f84a3;
+    --accent: #72f1c8;
+    --accent2: #7aa7ff;
+    --warn: #ffd166;
+    --danger: #ff7b8a;
+    --past: #c7a4ff;
+    --log: #72f1c8;
+    --narrative: #7aa7ff;
+    --inferred: #ffd166;
+    --planned: #ff9bd0;
+    --shadow: 0 18px 45px rgba(0,0,0,.35);
+    --radius: 22px;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background:
+      radial-gradient(circle at 20% 0%, rgba(114,241,200,.16), transparent 30%),
+      radial-gradient(circle at 85% 15%, rgba(122,167,255,.18), transparent 32%),
+      radial-gradient(circle at 50% 100%, rgba(255,209,102,.10), transparent 35%),
+      linear-gradient(145deg, #070a13 0%, #0b1020 45%, #101629 100%);
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(rgba(255,255,255,.028) 1px, transparent 1px);
+    background-size: 100% 4px;
+    opacity: .25;
+    mix-blend-mode: screen;
+  }
+
+  a { color: var(--accent); }
+  .wrap {
+    width: min(1180px, calc(100% - 34px));
+    margin: 0 auto;
+    padding: 34px 0 70px;
+  }
+
+  header.hero {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,.12);
+    background: linear-gradient(135deg, rgba(21,33,59,.88), rgba(9,14,27,.86));
+    border-radius: 34px;
+    padding: clamp(26px, 5vw, 54px);
+    box-shadow: var(--shadow);
+  }
+
+  .hero::after {
+    content: "";
+    position: absolute;
+    right: -120px;
+    top: -120px;
+    width: 310px;
+    height: 310px;
+    background: radial-gradient(circle, rgba(114,241,200,.20), transparent 62%);
+    filter: blur(4px);
+  }
+
+  .kicker {
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 12px;
+    border: 1px solid rgba(114,241,200,.28);
+    border-radius: 999px;
+    color: var(--accent);
+    background: rgba(114,241,200,.08);
+    font-size: 13px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    margin: 18px 0 12px;
+    font-size: clamp(34px, 7vw, 76px);
+    line-height: .93;
+    letter-spacing: -.055em;
+  }
+
+  .subtitle {
+    max-width: 850px;
+    margin: 0;
+    color: var(--muted);
+    font-size: clamp(16px, 2vw, 20px);
+    line-height: 1.58;
+  }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0,1fr));
+    gap: 13px;
+    margin-top: 28px;
+  }
+
+  .stat {
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 19px;
+    padding: 16px;
+    background: rgba(255,255,255,.055);
+    backdrop-filter: blur(14px);
+  }
+  .stat b {
+    display:block;
+    font-size: 28px;
+    letter-spacing: -.03em;
+  }
+  .stat span { color: var(--muted); font-size: 13px; }
+
+  .toolbar {
+    position: sticky;
+    top: 12px;
+    z-index: 20;
+    margin: 22px 0 20px;
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 26px;
+    background: rgba(8,13,25,.82);
+    box-shadow: 0 16px 38px rgba(0,0,0,.28);
+    backdrop-filter: blur(18px);
+    padding: 14px;
+  }
+
+  .toolbar-grid {
+    display: grid;
+    grid-template-columns: 1.25fr .8fr .8fr .8fr auto;
+    gap: 10px;
+    align-items: center;
+  }
+
+  input, select, button {
+    border: 1px solid rgba(255,255,255,.15);
+    color: var(--text);
+    background: rgba(255,255,255,.07);
+    border-radius: 14px;
+    padding: 12px 13px;
+    font: inherit;
+    outline: none;
+  }
+  select option { background: #121b31; color: var(--text); }
+  .date-box .day { overflow-wrap: anywhere; font-size: 18px; }
+  .time:empty { display: none; }
+  input::placeholder { color: rgba(237,246,255,.45); }
+  button {
+    cursor: pointer;
+    transition: transform .15s ease, background .15s ease, border-color .15s ease;
+  }
+  button:hover {
+    transform: translateY(-1px);
+    border-color: rgba(114,241,200,.42);
+    background: rgba(114,241,200,.12);
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .chip {
+    padding: 8px 11px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.13);
+    background: rgba(255,255,255,.055);
+    color: var(--muted);
+    font-size: 13px;
+    user-select: none;
+  }
+  .chip.active {
+    color: #061119;
+    border-color: rgba(114,241,200,.75);
+    background: linear-gradient(135deg, var(--accent), #b2fff0);
+  }
+
+  .notes {
+    margin: 22px 0;
+    display: grid;
+    grid-template-columns: 1.1fr .9fr;
+    gap: 16px;
+  }
+  .note-card {
+    border: 1px solid rgba(255,255,255,.12);
+    background: var(--panel);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    box-shadow: 0 12px 26px rgba(0,0,0,.22);
+  }
+  .note-card h3 {
+    margin: 0 0 10px;
+    font-size: 17px;
+  }
+  .note-card p, .note-card li {
+    color: var(--muted);
+    line-height: 1.48;
+  }
+  .note-card ul { margin: 0; padding-left: 19px; }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.11);
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 18px currentColor;
+  }
+  .dot.log { background: var(--log); }
+  .dot.narrative { background: var(--narrative); }
+  .dot.inferred { background: var(--inferred); }
+  .dot.past { background: var(--past); }
+  .dot.planned { background: var(--planned); }
+
+  .section-title {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    margin: 30px 0 14px;
+  }
+  .section-title h2 {
+    margin: 0;
+    font-size: 28px;
+    letter-spacing: -.035em;
+  }
+  .section-title small { color: var(--muted); }
+
+  .timeline {
+    position: relative;
+    margin-left: 23px;
+    padding-left: 25px;
+  }
+  .timeline::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 8px;
+    width: 2px;
+    background: linear-gradient(var(--past), var(--accent), var(--accent2), var(--warn));
+    opacity: .75;
+  }
+
+  .event {
+    position: relative;
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 18px;
+    margin: 15px 0;
+    animation: cardIn .36s ease both;
+  }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: none; }
+  }
+  .event::before {
+    content: "";
+    position: absolute;
+    left: -33px;
+    top: 24px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--event-color, var(--accent));
+    border: 3px solid #0b1020;
+    box-shadow: 0 0 0 5px rgba(255,255,255,.055), 0 0 24px var(--event-color, var(--accent));
+  }
+
+  .date-box {
+    position: sticky;
+    top: 124px;
+    align-self: start;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.055);
+    border-radius: 18px;
+    padding: 13px;
+    text-align: right;
+  }
+  .date-box .day {
+    font-weight: 800;
+    color: var(--event-color, var(--accent));
+    font-size: 22px;
+    letter-spacing: -.04em;
+  }
+  .date-box .date {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.35;
+    margin-top: 4px;
+  }
+  .date-box .time {
+    color: var(--soft);
+    font-size: 12px;
+    margin-top: 5px;
+  }
+
+  .card {
+    border: 1px solid rgba(255,255,255,.12);
+    background: linear-gradient(135deg, rgba(25,38,68,.82), rgba(13,19,35,.82));
+    border-radius: var(--radius);
+    padding: 18px;
+    box-shadow: 0 14px 32px rgba(0,0,0,.25);
+    overflow: hidden;
+  }
+
+  .card-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: start;
+  }
+  .card h3 {
+    margin: 0;
+    font-size: 20px;
+    letter-spacing: -.02em;
+  }
+  .summary {
+    margin: 10px 0 0;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin: 13px 0 0;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 9px;
+    border-radius: 999px;
+    font-size: 12px;
+    color: var(--muted);
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.11);
+  }
+  .badge.source {
+    color: #061119;
+    background: var(--event-color, var(--accent));
+    border-color: transparent;
+    font-weight: 700;
+  }
+  .details {
+    display: none;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,.10);
+    color: var(--muted);
+    line-height: 1.55;
+  }
+  .details.open { display: block; }
+  .details strong { color: var(--text); }
+  .card-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .mini {
+    padding: 7px 10px;
+    font-size: 13px;
+    border-radius: 999px;
+  }
+
+  .empty {
+    border: 1px dashed rgba(255,255,255,.18);
+    border-radius: var(--radius);
+    padding: 30px;
+    color: var(--muted);
+    text-align: center;
+    background: rgba(255,255,255,.04);
+  }
+
+  .route-strip {
+    display: grid;
+    grid-template-columns: repeat(20, 1fr);
+    gap: 4px;
+    margin-top: 20px;
+  }
+  .chapter-node {
+    height: 9px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, rgba(114,241,200,.85), rgba(122,167,255,.85));
+    opacity: .38;
+  }
+  .chapter-node.active { opacity: 1; box-shadow: 0 0 16px rgba(114,241,200,.45); }
+
+  footer {
+    margin-top: 32px;
+    color: var(--soft);
+    text-align: center;
+    font-size: 13px;
+  }
+
+  @media (max-width: 850px) {
+    .hero-grid, .notes { grid-template-columns: 1fr; }
+    .toolbar { position: static; }
+    .toolbar-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .toolbar-grid input, .toolbar-grid select { min-width: 0; width: 100%; }
+    .card-head > div:first-child { min-width: 0; }
+    .card h3, .badge, .details { overflow-wrap: anywhere; }
+    .toolbar-grid button { grid-column: span 2; }
+    .event { grid-template-columns: 1fr; gap: 8px; }
+    .date-box {
+      position: relative;
+      top: auto;
+      text-align: left;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .timeline { margin-left: 11px; padding-left: 19px; }
+    .event::before { left: -27px; }
+  }
+
+  @media print {
+    body { background: #fff; color: #111; }
+    body::before, .toolbar, .chips, .route-strip, button { display:none !important; }
+    .wrap { width: 100%; padding: 0; }
+    header.hero, .note-card, .card, .date-box {
+      background: #fff !important;
+      color: #111 !important;
+      box-shadow: none !important;
+      border-color: #ccc !important;
+    }
+    .subtitle, .summary, .details, .note-card p, .note-card li, .badge, .date-box .date, .date-box .time { color: #333 !important; }
+    .details { display:block !important; }
+    .event { break-inside: avoid; page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <div class="kicker">Interactive manuscript timeline</div>
+      <h1>Tales from a Broken World</h1>
+      <p class="subtitle">
+        Story chronology from the latest Excel timeline, including <strong>Sonja’s red dress</strong>, all 20 chapters and the <strong>2489 epilogue</strong>.
+        Day 0 is anchored to Mika discovering 5B’s buried frame in the Great Cold Desert.
+      </p>
+      <div class="hero-grid">
+        <div class="stat"><b id="statEvents">—</b><span>timeline entries</span></div>
+        <div class="stat"><b>20</b><span>chapters, plus bonus story and epilogue</span></div>
+        <div class="stat"><b>2489</b><span>epilogue year</span></div>
+        <div class="stat"><b>6</b><span>bonus-story entries</span></div>
+      </div>
+      <div class="route-strip" id="routeStrip"></div>
+    </header>
+
+    <section class="toolbar">
+      <div class="toolbar-grid">
+        <input id="search" type="search" placeholder="Search scene, character, place, tag…">
+        <select id="phaseFilter">
+          <option value="all">All phases</option>
+          <option value="past">Before Day 0 only</option>
+          <option value="main">Day 0 onward only</option>
+        </select>
+        <select id="sourceFilter">
+          <option value="all">All date types</option>
+          <option value="log">Timestamp included</option>
+          <option value="narrative">Calendar date</option>
+          <option value="inferred">Approximate / ranged date</option>
+          <option value="planned">Date unspecified</option>
+        </select>
+        <select id="chapterFilter">
+          <option value="all">All chapters</option>
+        </select>
+        <button id="resetBtn">Reset</button>
+      </div>
+      <div class="chips" id="characterChips"></div>
+    </section>
+
+    <section class="notes">
+      <article class="note-card">
+        <h3>Reading key</h3>
+        <p>
+          This version follows the updated Excel timeline, with one card per row in workbook order. Dates, day offsets and event descriptions are preserved. Date badges describe the precision shown in the workbook; they do not independently verify a date against the manuscript. Use the chapter filter for the bonus story, epilogue or individual chapters.
+        </p>
+      </article>
+      <article class="note-card">
+        <h3>Continuity notes</h3>
+        <ul>
+          <li><strong>Day 0:</strong> 25 May 2468, 11:45:34 AM.</li>
+          <li><strong>Current endpoint:</strong> the epilogue in 2489.</li>
+          <li><strong>Uncertain timing:</strong> approximate ranges and unknown offsets remain as entered in the workbook.</li>
+        </ul>
+        <div class="legend" style="margin-top:12px">
+          <span class="pill"><span class="dot log"></span>Timestamp included</span>
+          <span class="pill"><span class="dot narrative"></span>Calendar date</span>
+          <span class="pill"><span class="dot inferred"></span>Approximate / ranged</span>
+          <span class="pill"><span class="dot planned"></span>Date unspecified</span>
+          <span class="pill"><span class="dot past"></span>Before Day 0</span>
+        </div>
+      </article>
+    </section>
+
+    <div class="section-title">
+      <h2>Timeline</h2>
+      <small id="resultCount">—</small>
+    </div>
+
+    <main class="timeline" id="timeline"></main>
+
+    <footer>
+      Updated from TalesFromABrokenWorld_Timeline.xlsx. All 112 entries included. No external libraries required; this file works offline.
+    </footer>
+  </div>
+
+<script>
+const timelineData = [
+  {
+    "id": "row-2",
+    "row": 2,
+    "phase": "past",
+    "day": 2,
+    "day_label": "-",
+    "date": "2025",
+    "time": "",
+    "chapter": "Background",
+    "chapterKeys": [
+      "background"
+    ],
+    "scene": "Present day",
+    "characters": [],
+    "charactersOriginal": "",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "World",
+    "summary": "Present day",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 2",
+    "raw": [
+      2025,
+      "-",
+      "World",
+      "-",
+      null,
+      "Present day",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "row-3",
+    "row": 3,
+    "phase": "past",
+    "day": 3,
+    "day_label": "-",
+    "date": "2093",
+    "time": "",
+    "chapter": "Background",
+    "chapterKeys": [
+      "background"
+    ],
+    "scene": "The Global War begins",
+    "characters": [],
+    "charactersOriginal": "",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "World",
+    "summary": "Global war begin",
+    "details": "Global War",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 3",
+    "raw": [
+      2093,
+      "-",
+      "World",
+      null,
+      "Global War",
+      "Global war begin",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "row-4",
+    "row": 4,
+    "phase": "past",
+    "day": 4,
+    "day_label": "-",
+    "date": "2093 – about 2403",
+    "time": "",
+    "chapter": "Background",
+    "chapterKeys": [
+      "background"
+    ],
+    "scene": "Centuries of global war",
+    "characters": [],
+    "charactersOriginal": "",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "World",
+    "summary": "Global war events",
+    "details": "Global War",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 4",
+    "raw": [
+      "2093 – about 2403",
+      "-",
+      "World",
+      null,
+      "Global War",
+      "Global war events",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "row-5",
+    "row": 5,
+    "phase": "past",
+    "day": 5,
+    "day_label": "-166 years",
+    "date": "12 November 2302",
+    "time": "",
+    "chapter": "Chapter 14: An unexpected invite",
+    "chapterKeys": [
+      "chapter-14"
+    ],
+    "scene": "Misha is assembled",
+    "characters": [],
+    "charactersOriginal": "",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "World",
+    "summary": "Misha was assembled.",
+    "details": "Global War",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 5",
+    "raw": [
+      "12 November 2302",
+      "-166 years",
+      "World",
+      "Chapter 14: An unexpected invite",
+      "Global War",
+      "Misha was assembled.",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "row-6",
+    "row": 6,
+    "phase": "past",
+    "day": 6,
+    "day_label": "-99 years",
+    "date": "22 October 2368",
+    "time": "",
+    "chapter": "Bonus Story: Sonja’s red dress",
+    "chapterKeys": [
+      "bonus"
+    ],
+    "scene": "Sonja discovers the red dress",
+    "characters": [
+      "Sonja",
+      "Sergeant’s squad"
+    ],
+    "charactersOriginal": "Sonja + Sergeant’s squad",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "At Dresden",
+    "summary": "Sonja sees the red dress in the shop window while being an auxiliary unit.",
+    "details": "Global War",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 6",
+    "raw": [
+      "22 October 2368",
+      "-99 years",
+      "At Dresden",
+      "Bonus Story: Sonja’s red dress",
+      "Global War",
+      "Sonja sees the red dress in the shop window while being an auxiliary unit.",
+      "Sonja + Sergeant’s squad",
+      null
+    ]
+  },
+  {
+    "id": "row-7",
+    "row": 7,
+    "phase": "past",
+    "day": 7,
+    "day_label": "-99 years",
+    "date": "22 October 2368",
+    "time": "",
+    "chapter": "Bonus Story: Sonja’s red dress",
+    "chapterKeys": [
+      "bonus"
+    ],
+    "scene": "The squad comes under attack",
+    "characters": [
+      "Sonja",
+      "Sergeant’s squad"
+    ],
+    "charactersOriginal": "Sonja + Sergeant’s squad",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "At Dresden",
+    "summary": "Sudden attack, the squad reacts. Losses. Sonja receive abuse.",
+    "details": "Global War",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 7",
+    "raw": [
+      "22 October 2368",
+      "-99 years",
+      "At Dresden",
+      "Bonus Story: Sonja’s red dress",
+      "Global War",
+      "Sudden attack, the squad reacts. Losses. Sonja receive abuse.",
+      "Sonja + Sergeant’s squad",
+      null
+    ]
+  },
+  {
+    "id": "row-8",
+    "row": 8,
+    "phase": "past",
+    "day": 8,
+    "day_label": "-99 years",
+    "date": "23 October 2368",
+    "time": "",
+    "chapter": "Bonus Story: Sonja’s red dress",
+    "chapterKeys": [
+      "bonus"
+    ],
+    "scene": "Sonja saves the sergeant",
+    "characters": [
+      "Sonja",
+      "Sergeant"
+    ],
+    "charactersOriginal": "Sonja, Sergeant",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "At Dresden",
+    "summary": "The squad is completely destroyed by a heavy combat androids group. Meeting with 4T (Forty). Only Sonja and the sergeant survives. Sonja takes care of his injuries and they flee during the night.",
+    "details": "Global War",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 8",
+    "raw": [
+      "23 October 2368",
+      "-99 years",
+      "At Dresden",
+      "Bonus Story: Sonja’s red dress",
+      "Global War",
+      "The squad is completely destroyed by a heavy combat androids group. Meeting with 4T (Forty). Only Sonja and the sergeant survives. Sonja takes care of his injuries and they flee during the night.",
+      "Sonja, Sergeant",
+      null
+    ]
+  },
+  {
+    "id": "row-9",
+    "row": 9,
+    "phase": "past",
+    "day": 9,
+    "day_label": "-99 years",
+    "date": "24 October 2368",
+    "time": "",
+    "chapter": "Bonus Story: Sonja’s red dress",
+    "chapterKeys": [
+      "bonus"
+    ],
+    "scene": "Hiding from an enemy patrol",
+    "characters": [
+      "Sonja",
+      "Sergeant"
+    ],
+    "charactersOriginal": "Sonja, Sergeant",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Towards Sonja’s army outpost",
+    "summary": "Avoiding being discovered by a passing by enemy android unit.",
+    "details": "Global War",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 9",
+    "raw": [
+      "24 October 2368",
+      "-99 years",
+      "Towards Sonja’s army outpost",
+      "Bonus Story: Sonja’s red dress",
+      "Global War",
+      "Avoiding being discovered by a passing by enemy android unit.",
+      "Sonja, Sergeant",
+      null
+    ]
+  },
+  {
+    "id": "row-10",
+    "row": 10,
+    "phase": "past",
+    "day": 10,
+    "day_label": "-99 years",
+    "date": "25 October 2368",
+    "time": "",
+    "chapter": "Bonus Story: Sonja’s red dress",
+    "chapterKeys": [
+      "bonus"
+    ],
+    "scene": "Sonja insists on her name",
+    "characters": [
+      "Sonja",
+      "Sergeant"
+    ],
+    "charactersOriginal": "Sonja, Sergeant",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Towards Sonja’s army outpost",
+    "summary": "Fleeing toward the outpost. Sonja states that she wants to be called by her name",
+    "details": "Global War",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 10",
+    "raw": [
+      "25 October 2368",
+      "-99 years",
+      "Towards Sonja’s army outpost",
+      "Bonus Story: Sonja’s red dress",
+      "Global War",
+      "Fleeing toward the outpost. Sonja states that she wants to be called by her name",
+      "Sonja, Sergeant",
+      null
+    ]
+  },
+  {
+    "id": "row-11",
+    "row": 11,
+    "phase": "past",
+    "day": 11,
+    "day_label": "-99 years",
+    "date": "26 October 2368",
+    "time": "",
+    "chapter": "Bonus Story: Sonja’s red dress",
+    "chapterKeys": [
+      "bonus"
+    ],
+    "scene": "Reaching the outpost and deserting",
+    "characters": [
+      "Sonja",
+      "Sergeant"
+    ],
+    "charactersOriginal": "Sonja, Sergeant",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "At Sonja’s army outpost",
+    "summary": "Sonja and the sergeant arrive safe at the outpost. He is taken in care by the medicals. Sonja leaves the camp headed east and deserts.",
+    "details": "Global War",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 11",
+    "raw": [
+      "26 October 2368",
+      "-99 years",
+      "At Sonja’s army outpost",
+      "Bonus Story: Sonja’s red dress",
+      "Global War",
+      "Sonja and the sergeant arrive safe at the outpost. He is taken in care by the medicals. Sonja leaves the camp headed east and deserts.",
+      "Sonja, Sergeant",
+      null
+    ]
+  },
+  {
+    "id": "row-12",
+    "row": 12,
+    "phase": "past",
+    "day": 12,
+    "day_label": "−81 years (approx.)",
+    "date": "27 October 2386",
+    "time": "",
+    "chapter": "Chapter 6: Market Town",
+    "chapterKeys": [
+      "chapter-6"
+    ],
+    "scene": "5B is assembled",
+    "characters": [
+      "5B"
+    ],
+    "charactersOriginal": "5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "At Synthtech facility",
+    "summary": "5B is assembled at the Synthtech factory; first boot follows on 3 December 2386.",
+    "details": "Global War",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 12",
+    "raw": [
+      "27 October 2386",
+      "−81 years (approx.)",
+      "At Synthtech facility",
+      "Chapter 6: Market Town",
+      "Global War",
+      "5B is assembled at the Synthtech factory; first boot follows on 3 December 2386.",
+      "5B",
+      null
+    ]
+  },
+  {
+    "id": "row-13",
+    "row": 13,
+    "phase": "past",
+    "day": 13,
+    "day_label": "−81 years (approx.)",
+    "date": "3 December 2386",
+    "time": "",
+    "chapter": "Chapter 6: Market Town",
+    "chapterKeys": [
+      "chapter-6"
+    ],
+    "scene": "5B’s first boot",
+    "characters": [
+      "5B"
+    ],
+    "charactersOriginal": "5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Synthtech facility, Dresden",
+    "summary": "5B boots for the first time. Mika later treats this as her birthday.",
+    "details": "—",
+    "tags": [
+      "5B identity"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 13",
+    "raw": [
+      "3 December 2386",
+      "−81 years (approx.)",
+      "Synthtech facility, Dresden",
+      "Chapter 6: Market Town",
+      null,
+      "5B boots for the first time. Mika later treats this as her birthday.",
+      "5B",
+      "5B identity"
+    ]
+  },
+  {
+    "id": "row-14",
+    "row": 14,
+    "phase": "past",
+    "day": 14,
+    "day_label": "Before day 0",
+    "date": "3 December 2392 – 16:16:18",
+    "time": "",
+    "chapter": "Chapter 2: Awakened",
+    "chapterKeys": [
+      "chapter-2"
+    ],
+    "scene": "Mark Schultz calibrates 5B",
+    "characters": [
+      "5B",
+      "Mark Schultz"
+    ],
+    "charactersOriginal": "5B, Mark Schultz",
+    "source": "Timestamp included",
+    "bucket": "log",
+    "location": "Maintenance facility (unspecified)",
+    "summary": "Mark Schultz performs recorded calibration maintenance on 5B. Mika later uses this log to recalibrate her.",
+    "details": "—",
+    "tags": [
+      "Repair history"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 14",
+    "raw": [
+      "3 December 2392 – 16:16:18",
+      "Before day 0",
+      "Maintenance facility (unspecified)",
+      "Chapter 2: Awakened",
+      null,
+      "Mark Schultz performs recorded calibration maintenance on 5B. Mika later uses this log to recalibrate her.",
+      "5B, Mark Schultz",
+      "Repair history"
+    ]
+  },
+  {
+    "id": "row-15",
+    "row": 15,
+    "phase": "past",
+    "day": 15,
+    "day_label": "-73 years",
+    "date": "23 March 2395",
+    "time": "",
+    "chapter": "Chapter 1: Desert findings",
+    "chapterKeys": [
+      "chapter-1"
+    ],
+    "scene": "5B enters hibernation",
+    "characters": [
+      "5B"
+    ],
+    "charactersOriginal": "5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Graveyard Battlefield",
+    "summary": "During battle 5B remains without energy and goes to hibernation. Before doing so she removes of her clothes",
+    "details": "Global War",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 15",
+    "raw": [
+      "23 March 2395",
+      "-73 years",
+      "Graveyard Battlefield",
+      "Chapter 1: Desert findings",
+      "Global War",
+      "During battle 5B remains without energy and goes to hibernation. Before doing so she removes of her clothes",
+      "5B",
+      null
+    ]
+  },
+  {
+    "id": "row-16",
+    "row": 16,
+    "phase": "past",
+    "day": 16,
+    "day_label": "−73 years (approx.)",
+    "date": "23 March 2395",
+    "time": "",
+    "chapter": "Chapters 5 and 17",
+    "chapterKeys": [
+      "chapter-5",
+      "chapter-17"
+    ],
+    "scene": "16B’s frame is destroyed",
+    "characters": [
+      "16B",
+      "5B"
+    ],
+    "charactersOriginal": "16B, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Great Cold Desert battlefield",
+    "summary": "16B’s frame is destroyed in the battle; her memory chip survives inside the damaged skull.",
+    "details": "—",
+    "tags": [
+      "16B survival"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 16",
+    "raw": [
+      "23 March 2395",
+      "−73 years (approx.)",
+      "Great Cold Desert battlefield",
+      "Chapters 5 and 17",
+      null,
+      "16B’s frame is destroyed in the battle; her memory chip survives inside the damaged skull.",
+      "16B, 5B",
+      "16B survival"
+    ]
+  },
+  {
+    "id": "row-17",
+    "row": 17,
+    "phase": "past",
+    "day": 17,
+    "day_label": "Before day 0",
+    "date": "3 March 2401",
+    "time": "",
+    "chapter": "Chapter 12: Hidden in the city ruins",
+    "chapterKeys": [
+      "chapter-12"
+    ],
+    "scene": "14S’s last active cycle",
+    "characters": [
+      "14S"
+    ],
+    "charactersOriginal": "14S",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Ruined town, northern route",
+    "summary": "Combat unit 14S enters its last recorded active cycle before prolonged hibernation; orders to defend the area remain pending.",
+    "details": "—",
+    "tags": [
+      "Lingering war orders"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 17",
+    "raw": [
+      "3 March 2401",
+      "Before day 0",
+      "Ruined town, northern route",
+      "Chapter 12: Hidden in the city ruins",
+      null,
+      "Combat unit 14S enters its last recorded active cycle before prolonged hibernation; orders to defend the area remain pending.",
+      "14S",
+      "Lingering war orders"
+    ]
+  },
+  {
+    "id": "row-18",
+    "row": 18,
+    "phase": "past",
+    "day": 18,
+    "day_label": "-65 years",
+    "date": "About 2403",
+    "time": "",
+    "chapter": "Background",
+    "chapterKeys": [
+      "background"
+    ],
+    "scene": "The war ends",
+    "characters": [],
+    "charactersOriginal": "",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "World",
+    "summary": "Global war somehow ends, humanity on the verge of extinction Small communities of humans, androids, mixed, start forming",
+    "details": "Global War",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 18",
+    "raw": [
+      "About 2403",
+      "-65 years",
+      "World",
+      "-",
+      "Global War",
+      "Global war somehow ends, humanity on the verge of extinction Small communities of humans, androids, mixed, start forming",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "row-19",
+    "row": 19,
+    "phase": "past",
+    "day": 19,
+    "day_label": "-43 years",
+    "date": "2425",
+    "time": "",
+    "chapter": "Background",
+    "chapterKeys": [
+      "background"
+    ],
+    "scene": "Mika is born",
+    "characters": [],
+    "charactersOriginal": "",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Village ",
+    "summary": "Mika’s birth",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 19",
+    "raw": [
+      2425,
+      "-43 years",
+      "Village ",
+      "-",
+      null,
+      "Mika’s birth",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "row-20",
+    "row": 20,
+    "phase": "past",
+    "day": 20,
+    "day_label": "-1 year",
+    "date": "2467",
+    "time": "",
+    "chapter": "Chapter 3: Lost lady",
+    "chapterKeys": [
+      "chapter-3"
+    ],
+    "scene": "Anne dies",
+    "characters": [
+      "Mika",
+      "Anne"
+    ],
+    "charactersOriginal": "Mika, Anne",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Village ",
+    "summary": "Anne, Mika’s partner dies. He remains alone at the village",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 20",
+    "raw": [
+      2467,
+      "-1 year",
+      "Village ",
+      "Chapter 3: Lost lady",
+      null,
+      "Anne, Mika’s partner dies. He remains alone at the village",
+      "Mika, Anne",
+      null
+    ]
+  },
+  {
+    "id": "row-21",
+    "row": 21,
+    "phase": "main",
+    "day": 21,
+    "day_label": "+0 days",
+    "date": "25 May 2468",
+    "time": "",
+    "chapter": "Chapter 1: Desert findings",
+    "chapterKeys": [
+      "chapter-1"
+    ],
+    "scene": "Mika discovers 5B",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Great Cold Desert battlefield",
+    "summary": "Mika finds an unusually intact combat frame; 5B boots at 11:45:34, assesses threat, tries to speak; hibernates again at 11:46:02. Mika decides to haul her to his village.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 21",
+    "raw": [
+      "25 May 2468",
+      "+0 days",
+      "Great Cold Desert battlefield",
+      "Chapter 1: Desert findings",
+      null,
+      "Mika finds an unusually intact combat frame; 5B boots at 11:45:34, assesses threat, tries to speak; hibernates again at 11:46:02. Mika decides to haul her to his village.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-22",
+    "row": 22,
+    "phase": "main",
+    "day": 22,
+    "day_label": "+0–3 days",
+    "date": "25–28 May 2468",
+    "time": "",
+    "chapter": "Chapter 1: Desert findings",
+    "chapterKeys": [
+      "chapter-1"
+    ],
+    "scene": "Bringing 5B back to the village",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Desert roads (about 230 km)",
+    "summary": "Mika hauls 5B roughly 230 km back to the village over several days, mainly in low-range gears. He sleeps beside the truck and covers her with a blanket.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 22",
+    "raw": [
+      "25–28 May 2468",
+      "+0–3 days",
+      "Desert roads (about 230 km)",
+      "Chapter 1: Desert findings",
+      null,
+      "Mika hauls 5B roughly 230 km back to the village over several days, mainly in low-range gears. He sleeps beside the truck and covers her with a blanket.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-23",
+    "row": 23,
+    "phase": "main",
+    "day": 23,
+    "day_label": "+3 days",
+    "date": "28 May 2468 (before midday)",
+    "time": "",
+    "chapter": "Chapter 1: Desert findings",
+    "chapterKeys": [
+      "chapter-1"
+    ],
+    "scene": "Arrival at the village",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Mika’s village barrack",
+    "summary": "Mika arrives “a little before midday, on the third day after he had discovered the android” and begins setting up tools to revive her.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 23",
+    "raw": [
+      "28 May 2468 (before midday)",
+      "+3 days",
+      "Mika’s village barrack",
+      "Chapter 1: Desert findings",
+      null,
+      "Mika arrives “a little before midday, on the third day after he had discovered the android” and begins setting up tools to revive her.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-24",
+    "row": 24,
+    "phase": "main",
+    "day": 24,
+    "day_label": "+3 days",
+    "date": "28 May 2468 – 11:45",
+    "time": "",
+    "chapter": "Chapter 1: Desert findings",
+    "chapterKeys": [
+      "chapter-1"
+    ],
+    "scene": "Identifying 5B’s frame",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Timestamp included",
+    "bucket": "log",
+    "location": "Village (truck bed / work area)",
+    "summary": "Mika scans 5B’s identifier at 11:45, then retrieves her model specifications and maintenance manuals from the village archive.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 24",
+    "raw": [
+      "28 May 2468 – 11:45",
+      "+3 days",
+      "Village (truck bed / work area)",
+      "Chapter 1: Desert findings",
+      null,
+      "Mika scans 5B’s identifier at 11:45, then retrieves her model specifications and maintenance manuals from the village archive.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-25",
+    "row": 25,
+    "phase": "main",
+    "day": 25,
+    "day_label": "+3 days",
+    "date": "28 May 2468 – 12:15:21",
+    "time": "",
+    "chapter": "Chapter 1: Desert findings",
+    "chapterKeys": [
+      "chapter-1"
+    ],
+    "scene": "5B reboots and attacks",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Timestamp included",
+    "bucket": "log",
+    "location": "Village (truck bed / work area)",
+    "summary": "5B reboots at 12:15:21, mistakes Mika’s scalpel for a threat and attacks. Auxiliary power trips; she collapses, then speaks to him.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 25",
+    "raw": [
+      "28 May 2468 – 12:15:21",
+      "+3 days",
+      "Village (truck bed / work area)",
+      "Chapter 1: Desert findings",
+      null,
+      "5B reboots at 12:15:21, mistakes Mika’s scalpel for a threat and attacks. Auxiliary power trips; she collapses, then speaks to him.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-26",
+    "row": 26,
+    "phase": "main",
+    "day": 26,
+    "day_label": "+3 days",
+    "date": "28 May 2468 – 12:17:43",
+    "time": "",
+    "chapter": "Chapters 1 and 8",
+    "chapterKeys": [
+      "chapter-1",
+      "chapter-8"
+    ],
+    "scene": "The name Feebie",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Timestamp included",
+    "bucket": "log",
+    "location": "Village workshop",
+    "summary": "Mika gives 5B the name Feebie, which she accepts and records as an alias.",
+    "details": "—",
+    "tags": [
+      "Identity and companionship"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 26",
+    "raw": [
+      "28 May 2468 – 12:17:43",
+      "+3 days",
+      "Village workshop",
+      "Chapters 1 and 8",
+      null,
+      "Mika gives 5B the name Feebie, which she accepts and records as an alias.",
+      "Mika, 5B",
+      "Identity and companionship"
+    ]
+  },
+  {
+    "id": "row-27",
+    "row": 27,
+    "phase": "main",
+    "day": 27,
+    "day_label": "+3 days",
+    "date": "28 May 2468",
+    "time": "",
+    "chapter": "Chapter 2: Awakened",
+    "chapterKeys": [
+      "chapter-2"
+    ],
+    "scene": "Fetching heavy water",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Village power plant (≈2 km away)",
+    "summary": "Mika walks to the power plant (\u003c30 min each way) to fetch heavy water; returns and refuels her.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 27",
+    "raw": [
+      "28 May 2468",
+      "+3 days",
+      "Village power plant (≈2 km away)",
+      "Chapter 2: Awakened",
+      null,
+      "Mika walks to the power plant (\u003c30 min each way) to fetch heavy water; returns and refuels her.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-28",
+    "row": 28,
+    "phase": "main",
+    "day": 28,
+    "day_label": "+3 days",
+    "date": "28 May 2468",
+    "time": "",
+    "chapter": "Chapter 2: Awakened",
+    "chapterKeys": [
+      "chapter-2"
+    ],
+    "scene": "Overriding the converter lock",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Village ",
+    "summary": "Converter decision: 5B runs risk analysis, switches to full-scale model, and decides: “…all right, I’ll activate the converter.”",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 28",
+    "raw": [
+      "28 May 2468",
+      "+3 days",
+      "Village ",
+      "Chapter 2: Awakened",
+      null,
+      "Converter decision: 5B runs risk analysis, switches to full-scale model, and decides: “…all right, I’ll activate the converter.”",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-29",
+    "row": 29,
+    "phase": "main",
+    "day": 29,
+    "day_label": "+3 days",
+    "date": "28 May 2468 (immediately after)",
+    "time": "",
+    "chapter": "Chapter 2: Awakened",
+    "chapterKeys": [
+      "chapter-2"
+    ],
+    "scene": "Waiting for reactor activation",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Village ",
+    "summary": "B estimates 18 min 27 s to reach reactor activation threshold; Mika goes to eat while waiting.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 29",
+    "raw": [
+      "28 May 2468 (immediately after)",
+      "+3 days",
+      "Village ",
+      "Chapter 2: Awakened",
+      null,
+      "B estimates 18 min 27 s to reach reactor activation threshold; Mika goes to eat while waiting.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-30",
+    "row": 30,
+    "phase": "main",
+    "day": 30,
+    "day_label": "+3 days",
+    "date": "28 May 2468 – afternoon",
+    "time": "",
+    "chapter": "Chapter 2: Awakened",
+    "chapterKeys": [
+      "chapter-2"
+    ],
+    "scene": "Granting Mika system access",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Village ",
+    "summary": "Mika persuades 5B to grant system access (security override/glitch). It takes him “a large part of the afternoon” to connect; connection succeeds at 28 May 2468, 17:55.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 30",
+    "raw": [
+      "28 May 2468 – afternoon",
+      "+3 days",
+      "Village ",
+      "Chapter 2: Awakened",
+      null,
+      "Mika persuades 5B to grant system access (security override/glitch). It takes him “a large part of the afternoon” to connect; connection succeeds at 28 May 2468, 17:55.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-31",
+    "row": 31,
+    "phase": "main",
+    "day": 31,
+    "day_label": "+3 days",
+    "date": "28 May 2468 – evening",
+    "time": "",
+    "chapter": "Chapter 2: Awakened",
+    "chapterKeys": [
+      "chapter-2"
+    ],
+    "scene": "5B walks again",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Village repair lab",
+    "summary": "Mika recalibrates 5B using her old maintenance log. After about an hour, 94% of tests pass; she walks and runs autonomously again.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 31",
+    "raw": [
+      "28 May 2468 – evening",
+      "+3 days",
+      "Village repair lab",
+      "Chapter 2: Awakened",
+      null,
+      "Mika recalibrates 5B using her old maintenance log. After about an hour, 94% of tests pass; she walks and runs autonomously again.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-32",
+    "row": 32,
+    "phase": "main",
+    "day": 32,
+    "day_label": "+3-6 days",
+    "date": "28–31 May 2468 (before departure)",
+    "time": "",
+    "chapter": "Chapter 3: Lost lady",
+    "chapterKeys": [
+      "chapter-3"
+    ],
+    "scene": "Searching for a new purpose",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Mika’s village",
+    "summary": "Mika gives 5B Anne’s clothes, shares dinner and introduces her to the library. Unable to find a new purpose, she idles while he checks on her over the following days.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 32",
+    "raw": [
+      "28–31 May 2468 (before departure)",
+      "+3-6 days",
+      "Mika’s village",
+      "Chapter 3: Lost lady",
+      null,
+      "Mika gives 5B Anne’s clothes, shares dinner and introduces her to the library. Unable to find a new purpose, she idles while he checks on her over the following days.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-33",
+    "row": 33,
+    "phase": "main",
+    "day": 33,
+    "day_label": "+6-7 days",
+    "date": "31 May – 1 June 2468 ",
+    "time": "",
+    "chapter": "Chapter 4: Hunt",
+    "chapterKeys": [
+      "chapter-4"
+    ],
+    "scene": "The journey to the hunting forest",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Journey to Hunting forest",
+    "summary": "They travel to the hunting forest, restore 5B’s approximate navigation using the map, camp overnight and arrive just after noon on 1 June.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 33",
+    "raw": [
+      "31 May – 1 June 2468 ",
+      "+6-7 days",
+      "Journey to Hunting forest",
+      "Chapter 4: Hunt",
+      null,
+      "They travel to the hunting forest, restore 5B’s approximate navigation using the map, camp overnight and arrive just after noon on 1 June.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-34",
+    "row": 34,
+    "phase": "main",
+    "day": 34,
+    "day_label": "+7-8 days",
+    "date": "1-2 June 2468 ",
+    "time": "",
+    "chapter": "Chapter 4: Hunt",
+    "chapterKeys": [
+      "chapter-4"
+    ],
+    "scene": "Hunting together",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Hunting forest",
+    "summary": "A couple of days hunting. Mika vs 5B hunting skills",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 34",
+    "raw": [
+      "1-2 June 2468 ",
+      "+7-8 days",
+      "Hunting forest",
+      "Chapter 4: Hunt",
+      null,
+      "A couple of days hunting. Mika vs 5B hunting skills",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-35",
+    "row": 35,
+    "phase": "main",
+    "day": 35,
+    "day_label": "+8 days",
+    "date": "2 June 2468",
+    "time": "",
+    "chapter": "Chapter 4: Hunt",
+    "chapterKeys": [
+      "chapter-4"
+    ],
+    "scene": "5B drives for the first time",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Hunting forest",
+    "summary": "Leaving the Hunting forest. 5B driving for the first time",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 35",
+    "raw": [
+      "2 June 2468",
+      "+8 days",
+      "Hunting forest",
+      "Chapter 4: Hunt",
+      null,
+      "Leaving the Hunting forest. 5B driving for the first time",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-36",
+    "row": 36,
+    "phase": "main",
+    "day": 36,
+    "day_label": "+8-10 days",
+    "date": "2-4 June 2468",
+    "time": "",
+    "chapter": "Chapter 4: Hunt",
+    "chapterKeys": [
+      "chapter-4"
+    ],
+    "scene": "Returning with the hunting catch",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Journey back from Hunting forest",
+    "summary": "They return to the village in a couple of days, taking turns driving and carrying their hunting catch.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 36",
+    "raw": [
+      "2-4 June 2468",
+      "+8-10 days",
+      "Journey back from Hunting forest",
+      "Chapter 4: Hunt",
+      null,
+      "They return to the village in a couple of days, taking turns driving and carrying their hunting catch.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-37",
+    "row": 37,
+    "phase": "main",
+    "day": 37,
+    "day_label": "+10 days",
+    "date": "4 June 2468",
+    "time": "",
+    "chapter": "Chapter 4: Hunt",
+    "chapterKeys": [
+      "chapter-4"
+    ],
+    "scene": "Choosing to seek the old command",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Village ",
+    "summary": "Back at the village: unload truck. Mika changes 5B mind: decide to go looking for her previous command",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 37",
+    "raw": [
+      "4 June 2468",
+      "+10 days",
+      "Village ",
+      "Chapter 4: Hunt",
+      null,
+      "Back at the village: unload truck. Mika changes 5B mind: decide to go looking for her previous command",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-38",
+    "row": 38,
+    "phase": "main",
+    "day": 38,
+    "day_label": "+11 days",
+    "date": "5 June 2468 (preparation; power mode inferred 5 June)",
+    "time": "",
+    "chapter": "Chapter 4: Hunt",
+    "chapterKeys": [
+      "chapter-4"
+    ],
+    "scene": "Preparing the village for departure",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Village ",
+    "summary": "They prepare the truck and route, shut down the data centre and set the power plant to low output. It can run unattended for six months and thirteen days. They plan inhabited stops every seven to ten days where possible.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 38",
+    "raw": [
+      "5 June 2468 (preparation; power mode inferred 5 June)",
+      "+11 days",
+      "Village ",
+      "Chapter 4: Hunt",
+      null,
+      "They prepare the truck and route, shut down the data centre and set the power plant to low output. It can run unattended for six months and thirteen days. They plan inhabited stops every seven to ten days where possible.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-39",
+    "row": 39,
+    "phase": "main",
+    "day": 39,
+    "day_label": "+12-13 days",
+    "date": "6-7 June 2468",
+    "time": "",
+    "chapter": "Chapter 5: Digging in the sand",
+    "chapterKeys": [
+      "chapter-5"
+    ],
+    "scene": "Travelling to the battlefield",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Journey to Graveyard battlefield",
+    "summary": "No mentions, just time passing",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 39",
+    "raw": [
+      "6-7 June 2468",
+      "+12-13 days",
+      "Journey to Graveyard battlefield",
+      "Chapter 5: Digging in the sand",
+      null,
+      "No mentions, just time passing",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-40",
+    "row": 40,
+    "phase": "main",
+    "day": 40,
+    "day_label": "+14 days",
+    "date": "8 June 2468",
+    "time": "",
+    "chapter": "Chapter 5: Digging in the sand",
+    "chapterKeys": [
+      "chapter-5"
+    ],
+    "scene": "16B is recorded as dead",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Battlefield revisit",
+    "summary": "5B scans the remains of combat unit 103C-16B and records her as dead at 11:21:01 on 8 June 2468.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 40",
+    "raw": [
+      "8 June 2468",
+      "+14 days",
+      "Battlefield revisit",
+      "Chapter 5: Digging in the sand",
+      null,
+      "5B scans the remains of combat unit 103C-16B and records her as dead at 11:21:01 on 8 June 2468.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-41",
+    "row": 41,
+    "phase": "main",
+    "day": 41,
+    "day_label": "+14 days",
+    "date": "8 June 2468",
+    "time": "",
+    "chapter": "Chapter 5: Digging in the sand",
+    "chapterKeys": [
+      "chapter-5"
+    ],
+    "scene": "Another frame beyond repair",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Battlefield revisit",
+    "summary": "Mika and 5B split the field; Mika finds an intact-looking frame but it’s dead (reactor hole). Emotional beat: Mika cries again.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 41",
+    "raw": [
+      "8 June 2468",
+      "+14 days",
+      "Battlefield revisit",
+      "Chapter 5: Digging in the sand",
+      null,
+      "Mika and 5B split the field; Mika finds an intact-looking frame but it’s dead (reactor hole). Emotional beat: Mika cries again.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-42",
+    "row": 42,
+    "phase": "main",
+    "day": 42,
+    "day_label": "+14 days",
+    "date": "8 June 2468",
+    "time": "",
+    "chapter": "Chapter 5: Digging in the sand",
+    "chapterKeys": [
+      "chapter-5"
+    ],
+    "scene": "Saving 16B’s memory chip",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B"
+    ],
+    "charactersOriginal": "Mika, 5B, 16B (memory chip)",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Great Cold Desert battlefield",
+    "summary": "5B recognises her former roommate 16B. Together with Mika she extracts the intact memory chip from 16B’s skull, hoping it can one day be restored in another frame.",
+    "details": "—",
+    "tags": [
+      "16B survival"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 42",
+    "raw": [
+      "8 June 2468",
+      "+14 days",
+      "Great Cold Desert battlefield",
+      "Chapter 5: Digging in the sand",
+      null,
+      "5B recognises her former roommate 16B. Together with Mika she extracts the intact memory chip from 16B’s skull, hoping it can one day be restored in another frame.",
+      "Mika, 5B, 16B (memory chip)",
+      "16B survival"
+    ]
+  },
+  {
+    "id": "row-43",
+    "row": 43,
+    "phase": "main",
+    "day": 43,
+    "day_label": "+14–15 days",
+    "date": "8 June evening–9 June morning 2468",
+    "time": "",
+    "chapter": "Chapter 5: Digging in the sand",
+    "chapterKeys": [
+      "chapter-5"
+    ],
+    "scene": "The search ends without survivors",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Battlefield revisit",
+    "summary": "They finish searching at sunset without finding other survivors or the needed battery and pump. The next morning Mika gives 5B an antistatic box for 16B’s chip before departure.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 43",
+    "raw": [
+      "8 June evening–9 June morning 2468",
+      "+14–15 days",
+      "Battlefield revisit",
+      "Chapter 5: Digging in the sand",
+      null,
+      "They finish searching at sunset without finding other survivors or the needed battery and pump. The next morning Mika gives 5B an antistatic box for 16B’s chip before departure.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-44",
+    "row": 44,
+    "phase": "main",
+    "day": 44,
+    "day_label": "+15-18 days",
+    "date": "9-12 June 2468",
+    "time": "",
+    "chapter": "Chapter 6: Market Town",
+    "chapterKeys": [
+      "chapter-6"
+    ],
+    "scene": "The journey to Market Town",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Journey to Market town",
+    "summary": "Journey from the battlefield area to Market Town takes 4 days; mid-morning of the 4th day traffic increases and they arrive.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 44",
+    "raw": [
+      "9-12 June 2468",
+      "+15-18 days",
+      "Journey to Market town",
+      "Chapter 6: Market Town",
+      null,
+      "Journey from the battlefield area to Market Town takes 4 days; mid-morning of the 4th day traffic increases and they arrive.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-45",
+    "row": 45,
+    "phase": "main",
+    "day": 45,
+    "day_label": "+18 days",
+    "date": "12 June 2468 – 12:15:18",
+    "time": "",
+    "chapter": "Chapter 6: Market Town",
+    "chapterKeys": [
+      "chapter-6"
+    ],
+    "scene": "A necklace for 16B’s memories",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Timestamp included",
+    "bucket": "log",
+    "location": "Market Town",
+    "summary": "Mika gives 5B a pouch necklace to carry 16B’s memory chip safely; she wears it beneath her shirt.",
+    "details": "—",
+    "tags": [
+      "Memory chips"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 45",
+    "raw": [
+      "12 June 2468 – 12:15:18",
+      "+18 days",
+      "Market Town",
+      "Chapter 6: Market Town",
+      null,
+      "Mika gives 5B a pouch necklace to carry 16B’s memory chip safely; she wears it beneath her shirt.",
+      "Mika, 5B",
+      "Memory chips"
+    ]
+  },
+  {
+    "id": "row-46",
+    "row": 46,
+    "phase": "main",
+    "day": 46,
+    "day_label": "+18 days",
+    "date": "12 June 2468",
+    "time": "",
+    "chapter": "Chapter 6: Market Town",
+    "chapterKeys": [
+      "chapter-6"
+    ],
+    "scene": "Trading and refuelling",
+    "characters": [
+      "Mika",
+      "5B",
+      "Seth",
+      "Koma"
+    ],
+    "charactersOriginal": "Mika, 5B, Seth, Koma",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Market Town",
+    "summary": "Trade/refuel sequence; they depart late afternoon heading north; they stop after sunset because Mika refuses to drive at night.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 46",
+    "raw": [
+      "12 June 2468",
+      "+18 days",
+      "Market Town",
+      "Chapter 6: Market Town",
+      null,
+      "Trade/refuel sequence; they depart late afternoon heading north; they stop after sunset because Mika refuses to drive at night.",
+      "Mika, 5B, Seth, Koma",
+      null
+    ]
+  },
+  {
+    "id": "row-47",
+    "row": 47,
+    "phase": "main",
+    "day": 47,
+    "day_label": "+18 days",
+    "date": "12 June 2468 – evening",
+    "time": "",
+    "chapter": "Chapter 6: Market Town",
+    "chapterKeys": [
+      "chapter-6"
+    ],
+    "scene": "Setting a birthday reminder",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Camp north of Market Town",
+    "summary": "5B reveals her assembly and first-boot dates. Mika proposes celebrating 3 December, and she creates an annual birthday reminder.",
+    "details": "—",
+    "tags": [
+      "5B identity"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 47",
+    "raw": [
+      "12 June 2468 – evening",
+      "+18 days",
+      "Camp north of Market Town",
+      "Chapter 6: Market Town",
+      null,
+      "5B reveals her assembly and first-boot dates. Mika proposes celebrating 3 December, and she creates an annual birthday reminder.",
+      "Mika, 5B",
+      "5B identity"
+    ]
+  },
+  {
+    "id": "row-48",
+    "row": 48,
+    "phase": "main",
+    "day": 48,
+    "day_label": "+18-23 days",
+    "date": "12-17 June 2468",
+    "time": "",
+    "chapter": "Chapter 6: Market Town",
+    "chapterKeys": [
+      "chapter-6"
+    ],
+    "scene": "The journey to the Androids’ Camp",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Journey to Android’s Camp",
+    "summary": "Several repetitive travel days pass; Mika enjoys the routine.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 48",
+    "raw": [
+      "12-17 June 2468",
+      "+18-23 days",
+      "Journey to Android’s Camp",
+      "Chapter 6: Market Town",
+      null,
+      "Several repetitive travel days pass; Mika enjoys the routine.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-49",
+    "row": 49,
+    "phase": "main",
+    "day": 49,
+    "day_label": "+23 days",
+    "date": "17 June 2468",
+    "time": "",
+    "chapter": "Chapter 7: The Androids’ Camp",
+    "chapterKeys": [
+      "chapter-7"
+    ],
+    "scene": "First arrival at the camp",
+    "characters": [
+      "Mika",
+      "5B",
+      "Alex",
+      "Masha",
+      "Sonja",
+      "Michael"
+    ],
+    "charactersOriginal": "Mika, 5B, Alex, Masha, Sonja, Michael",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Arrive at the Android’s Camp",
+    "summary": "They arrive at the Androids’ Camp and meet Alex, Masha, Sonja and Michael. The camp has no compatible pump or battery; Michael requests information about wartime spare-parts depots.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 49",
+    "raw": [
+      "17 June 2468",
+      "+23 days",
+      "Arrive at the Android’s Camp",
+      "Chapter 7: The Androids’ Camp",
+      null,
+      "They arrive at the Androids’ Camp and meet Alex, Masha, Sonja and Michael. The camp has no compatible pump or battery; Michael requests information about wartime spare-parts depots.",
+      "Mika, 5B, Alex, Masha, Sonja, Michael",
+      null
+    ]
+  },
+  {
+    "id": "row-50",
+    "row": 50,
+    "phase": "main",
+    "day": 50,
+    "day_label": "+23 days",
+    "date": "17 June 2468 – from 18:05",
+    "time": "",
+    "chapter": "Chapter 8: Different species",
+    "chapterKeys": [
+      "chapter-8"
+    ],
+    "scene": "Tina examines and repairs 5B",
+    "characters": [
+      "5B",
+      "Tina"
+    ],
+    "charactersOriginal": "5B, Tina",
+    "source": "Timestamp included",
+    "bucket": "log",
+    "location": "Androids’ Camp, Tina’s lab",
+    "summary": "Tina examines 5B and repairs the abdominal incision. She confirms the failing pump and exhausted backup battery; 5B declines cosmetic repair of her facial scar.",
+    "details": "—",
+    "tags": [
+      "Maintenance"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 50",
+    "raw": [
+      "17 June 2468 – from 18:05",
+      "+23 days",
+      "Androids’ Camp, Tina’s lab",
+      "Chapter 8: Different species",
+      null,
+      "Tina examines 5B and repairs the abdominal incision. She confirms the failing pump and exhausted backup battery; 5B declines cosmetic repair of her facial scar.",
+      "5B, Tina",
+      "Maintenance"
+    ]
+  },
+  {
+    "id": "row-51",
+    "row": 51,
+    "phase": "main",
+    "day": 51,
+    "day_label": "+24 days",
+    "date": "18 June 2468",
+    "time": "",
+    "chapter": "Chapter 8: Different species",
+    "chapterKeys": [
+      "chapter-8"
+    ],
+    "scene": "Sonja’s story and coordinates",
+    "characters": [
+      "Mika",
+      "5B",
+      "Alex",
+      "Masha",
+      "Sonja",
+      "Michael",
+      "Tina",
+      "other androids"
+    ],
+    "charactersOriginal": "Mika, 5B, Alex, Masha, Sonja, Michael, Tina, other androids",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Android’s Camp",
+    "summary": "Mika obtains hunting permission. Sonja shoots a pheasant, makes advances that Mika declines and recounts her reassignment as an auxiliary combat unit. She supplies coordinates for a military facility; Mika plans to leave the next morning.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 51",
+    "raw": [
+      "18 June 2468",
+      "+24 days",
+      "Android’s Camp",
+      "Chapter 8: Different species",
+      null,
+      "Mika obtains hunting permission. Sonja shoots a pheasant, makes advances that Mika declines and recounts her reassignment as an auxiliary combat unit. She supplies coordinates for a military facility; Mika plans to leave the next morning.",
+      "Mika, 5B, Alex, Masha, Sonja, Michael, Tina, other androids",
+      null
+    ]
+  },
+  {
+    "id": "row-52",
+    "row": 52,
+    "phase": "main",
+    "day": 52,
+    "day_label": "+24 days",
+    "date": "18 June 2468",
+    "time": "",
+    "chapter": "Chapter 8: Different species",
+    "chapterKeys": [
+      "chapter-8"
+    ],
+    "scene": "Replacing 5B’s filters",
+    "characters": [
+      "5B",
+      "Tina"
+    ],
+    "charactersOriginal": "5B, Tina",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Androids’ Camp, Tina’s lab",
+    "summary": "Tina replaces 5B’s filters and provides spare filters. The pump and battery remain unavailable.",
+    "details": "—",
+    "tags": [
+      "Maintenance"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 52",
+    "raw": [
+      "18 June 2468",
+      "+24 days",
+      "Androids’ Camp, Tina’s lab",
+      "Chapter 8: Different species",
+      null,
+      "Tina replaces 5B’s filters and provides spare filters. The pump and battery remain unavailable.",
+      "5B, Tina",
+      "Maintenance"
+    ]
+  },
+  {
+    "id": "row-53",
+    "row": 53,
+    "phase": "main",
+    "day": 53,
+    "day_label": "+24 days",
+    "date": "18 June 2468",
+    "time": "",
+    "chapter": "Chapter 8: Different species",
+    "chapterKeys": [
+      "chapter-8"
+    ],
+    "scene": "Last night at the camp",
+    "characters": [
+      "Mika",
+      "5B",
+      "Alex",
+      "Masha",
+      "Sonja",
+      "Michael",
+      "Tina",
+      "other androids"
+    ],
+    "charactersOriginal": "Mika, 5B, Alex, Masha, Sonja, Michael, Tina, other androids",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Android’s Camp",
+    "summary": "They return to their barrack and spend their last night at the Androids’ Camp.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 53",
+    "raw": [
+      "18 June 2468",
+      "+24 days",
+      "Android’s Camp",
+      "Chapter 8: Different species",
+      null,
+      "They return to their barrack and spend their last night at the Androids’ Camp.",
+      "Mika, 5B, Alex, Masha, Sonja, Michael, Tina, other androids",
+      null
+    ]
+  },
+  {
+    "id": "row-54",
+    "row": 54,
+    "phase": "main",
+    "day": 54,
+    "day_label": "+25 days",
+    "date": "19 June 2468",
+    "time": "",
+    "chapter": "Chapter 9: Wandering again",
+    "chapterKeys": [
+      "chapter-9"
+    ],
+    "scene": "5B loses and recovers her position",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to second Graveyard battlefield",
+    "summary": "5B temporary loose position. After a scan she recover it. A log confirm date, position and time.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 54",
+    "raw": [
+      "19 June 2468",
+      "+25 days",
+      "Journey to second Graveyard battlefield",
+      "Chapter 9: Wandering again",
+      null,
+      "5B temporary loose position. After a scan she recover it. A log confirm date, position and time.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-55",
+    "row": 55,
+    "phase": "main",
+    "day": 55,
+    "day_label": "+26 days",
+    "date": "20 June 2468",
+    "time": "",
+    "chapter": "Chapter 9: Wandering again",
+    "chapterKeys": [
+      "chapter-9"
+    ],
+    "scene": "Salvaging an older battlefield",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to second Graveyard battlefield",
+    "summary": "On the second travel morning they salvage an older battlefield with armoured vehicles, android and human remains, and a cyborg. 5B reveals that she has died and been restored twice before.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 55",
+    "raw": [
+      "20 June 2468",
+      "+26 days",
+      "Journey to second Graveyard battlefield",
+      "Chapter 9: Wandering again",
+      null,
+      "On the second travel morning they salvage an older battlefield with armoured vehicles, android and human remains, and a cyborg. 5B reveals that she has died and been restored twice before.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-56",
+    "row": 56,
+    "phase": "main",
+    "day": 56,
+    "day_label": "+26 days",
+    "date": "20 June 2468",
+    "time": "",
+    "chapter": "Chapter 9: Wandering again",
+    "chapterKeys": [
+      "chapter-9"
+    ],
+    "scene": "Shelter in an abandoned inn",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to last known fuel point",
+    "summary": "Desert city. Starts to rain. Abandoned inn. Scene at the bar counter",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 56",
+    "raw": [
+      "20 June 2468",
+      "+26 days",
+      "Journey to last known fuel point",
+      "Chapter 9: Wandering again",
+      null,
+      "Desert city. Starts to rain. Abandoned inn. Scene at the bar counter",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-57",
+    "row": 57,
+    "phase": "main",
+    "day": 57,
+    "day_label": "+28-32 days",
+    "date": "22-26 June 2468",
+    "time": "",
+    "chapter": "Chapter 10: Last fuel point",
+    "chapterKeys": [
+      "chapter-10"
+    ],
+    "scene": "Waiting at the last fuel point",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Journey to last known fuel point",
+    "summary": "They reach the last known fuel point on the morning of 22 June after another day and night of travel. With the trader absent, they wait while food and fuel run low.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 57",
+    "raw": [
+      "22-26 June 2468",
+      "+28-32 days",
+      "Journey to last known fuel point",
+      "Chapter 10: Last fuel point",
+      null,
+      "They reach the last known fuel point on the morning of 22 June after another day and night of travel. With the trader absent, they wait while food and fuel run low.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-58",
+    "row": 58,
+    "phase": "main",
+    "day": 58,
+    "day_label": "+32 days",
+    "date": "26 June 2468",
+    "time": "",
+    "chapter": "Chapter 10: Last fuel point",
+    "chapterKeys": [
+      "chapter-10"
+    ],
+    "scene": "The fuel trader returns",
+    "characters": [
+      "Mika",
+      "5B",
+      "Fuel Man"
+    ],
+    "charactersOriginal": "Mika, 5B, Fuel Man",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to last known fuel point",
+    "summary": "Fuel man arrives. Tradings for fuel. Dehydrated military rations.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 58",
+    "raw": [
+      "26 June 2468",
+      "+32 days",
+      "Journey to last known fuel point",
+      "Chapter 10: Last fuel point",
+      null,
+      "Fuel man arrives. Tradings for fuel. Dehydrated military rations.",
+      "Mika, 5B, Fuel Man",
+      null
+    ]
+  },
+  {
+    "id": "row-59",
+    "row": 59,
+    "phase": "main",
+    "day": 59,
+    "day_label": "+32 days",
+    "date": "26 June 2468",
+    "time": "",
+    "chapter": "Chapter 10: Last fuel point",
+    "chapterKeys": [
+      "chapter-10"
+    ],
+    "scene": "Reaching the first broken bridge",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to 5B stationary base",
+    "summary": "Leaving Last known fuel point. Direction North. Arrive at First Broken bridge",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 59",
+    "raw": [
+      "26 June 2468",
+      "+32 days",
+      "Journey to 5B stationary base",
+      "Chapter 10: Last fuel point",
+      null,
+      "Leaving Last known fuel point. Direction North. Arrive at First Broken bridge",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-60",
+    "row": 60,
+    "phase": "main",
+    "day": 60,
+    "day_label": "+32 days",
+    "date": "26 June 2468 – evening",
+    "time": "",
+    "chapter": "Chapter 10: Last fuel point",
+    "chapterKeys": [
+      "chapter-10"
+    ],
+    "scene": "Fording the river",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to 5B stationary base",
+    "summary": "5B drives the KrAZ through the river beside the collapsed bridge. Water enters the cab, but they reach the opposite bank and continue until dark.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 60",
+    "raw": [
+      "26 June 2468 – evening",
+      "+32 days",
+      "Journey to 5B stationary base",
+      "Chapter 10: Last fuel point",
+      null,
+      "5B drives the KrAZ through the river beside the collapsed bridge. Water enters the cab, but they reach the opposite bank and continue until dark.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-61",
+    "row": 61,
+    "phase": "main",
+    "day": 61,
+    "day_label": "+33–34 days",
+    "date": "27–28 June 2468 (arrival 27 June inferred)",
+    "time": "",
+    "chapter": "Chapter 11: 5B’s stationing base",
+    "chapterKeys": [
+      "chapter-11"
+    ],
+    "scene": "The abandoned stationing base",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "5B’s stationing base",
+    "summary": "They reach 5B’s abandoned stationing base after the next day’s drive, enter the underground command and idling facilities, and find no surviving chain of command.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 61",
+    "raw": [
+      "27–28 June 2468 (arrival 27 June inferred)",
+      "+33–34 days",
+      "5B’s stationing base",
+      "Chapter 11: 5B’s stationing base",
+      null,
+      "They reach 5B’s abandoned stationing base after the next day’s drive, enter the underground command and idling facilities, and find no surviving chain of command.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-62",
+    "row": 62,
+    "phase": "main",
+    "day": 62,
+    "day_label": "+33–34 days",
+    "date": "27–28 June 2468",
+    "time": "",
+    "chapter": "Chapter 11: 5B’s stationing base",
+    "chapterKeys": [
+      "chapter-11"
+    ],
+    "scene": "16B’s ribbon and a new mission",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "5B’s stationing base",
+    "summary": "5B finds 16B’s hair ribbon in their former room. Mika ties 5B’s hair with it. They accept that the command is gone and pursue restoring her frame.",
+    "details": "—",
+    "tags": [
+      "Memory and new purpose"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 62",
+    "raw": [
+      "27–28 June 2468",
+      "+33–34 days",
+      "5B’s stationing base",
+      "Chapter 11: 5B’s stationing base",
+      null,
+      "5B finds 16B’s hair ribbon in their former room. Mika ties 5B’s hair with it. They accept that the command is gone and pursue restoring her frame.",
+      "Mika, 5B",
+      "Memory and new purpose"
+    ]
+  },
+  {
+    "id": "row-63",
+    "row": 63,
+    "phase": "main",
+    "day": 63,
+    "day_label": "+33–34 days",
+    "date": "27–28 June 2468",
+    "time": "",
+    "chapter": "Chapter 11: 5B’s stationing base",
+    "chapterKeys": [
+      "chapter-11"
+    ],
+    "scene": "Discovering STO579W",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "5B’s stationing base",
+    "summary": "A supply order identifies STO579W; an operations map links it to Sonja’s coordinates beyond the Urals. 5B identifies a refinery en route, and they leave to seek fuel and spare parts.",
+    "details": "—",
+    "tags": [
+      "STO579W search"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 63",
+    "raw": [
+      "27–28 June 2468",
+      "+33–34 days",
+      "5B’s stationing base",
+      "Chapter 11: 5B’s stationing base",
+      null,
+      "A supply order identifies STO579W; an operations map links it to Sonja’s coordinates beyond the Urals. 5B identifies a refinery en route, and they leave to seek fuel and spare parts.",
+      "Mika, 5B",
+      "STO579W search"
+    ]
+  },
+  {
+    "id": "row-64",
+    "row": 64,
+    "phase": "main",
+    "day": 64,
+    "day_label": "+36 days",
+    "date": "30 June 2468",
+    "time": "",
+    "chapter": "Chapter 12: Hidden in the city ruins",
+    "chapterKeys": [
+      "chapter-12"
+    ],
+    "scene": "The fight with 14S",
+    "characters": [
+      "Mika",
+      "5B",
+      "14S"
+    ],
+    "charactersOriginal": "Mika, 5B, combat unit 516B-14S",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to STO579W facility",
+    "summary": "Combat unit 14S awakens and attacks them in a ruined town. 5B draws it away to protect Mika. He returns; she exposes its memory slot and sends instructions to his visor, allowing him to shoot and disable it.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 64",
+    "raw": [
+      "30 June 2468",
+      "+36 days",
+      "Journey to STO579W facility",
+      "Chapter 12: Hidden in the city ruins",
+      null,
+      "Combat unit 14S awakens and attacks them in a ruined town. 5B draws it away to protect Mika. He returns; she exposes its memory slot and sends instructions to his visor, allowing him to shoot and disable it.",
+      "Mika, 5B, combat unit 516B-14S",
+      null
+    ]
+  },
+  {
+    "id": "row-65",
+    "row": 65,
+    "phase": "main",
+    "day": 65,
+    "day_label": "+36 days",
+    "date": "30 June 2468 – after 17:16:18",
+    "time": "",
+    "chapter": "Chapter 13: The path gets harder",
+    "chapterKeys": [
+      "chapter-13"
+    ],
+    "scene": "Crossing the damaged road bridge",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Timestamp included",
+    "bucket": "log",
+    "location": "Bridge north of the ruined town",
+    "summary": "They cross a badly degraded road bridge despite an indeterminate structural assessment, then enter the marshy route toward the refinery.",
+    "details": "—",
+    "tags": [
+      "Journey hazards"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 65",
+    "raw": [
+      "30 June 2468 – after 17:16:18",
+      "+36 days",
+      "Bridge north of the ruined town",
+      "Chapter 13: The path gets harder",
+      null,
+      "They cross a badly degraded road bridge despite an indeterminate structural assessment, then enter the marshy route toward the refinery.",
+      "Mika, 5B",
+      "Journey hazards"
+    ]
+  },
+  {
+    "id": "row-66",
+    "row": 66,
+    "phase": "main",
+    "day": 66,
+    "day_label": "+36-47 days",
+    "date": "30 June-11 July 2468",
+    "time": "",
+    "chapter": "Chapter 13: The path gets harder",
+    "chapterKeys": [
+      "chapter-13"
+    ],
+    "scene": "Eleven days in the swamps",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Journey to STO579W facility",
+    "summary": "Struggling in the swamps",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 66",
+    "raw": [
+      "30 June-11 July 2468",
+      "+36-47 days",
+      "Journey to STO579W facility",
+      "Chapter 13: The path gets harder",
+      null,
+      "Struggling in the swamps",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-67",
+    "row": 67,
+    "phase": "main",
+    "day": 67,
+    "day_label": "+47 days",
+    "date": "11 July 2468",
+    "time": "",
+    "chapter": "Chapter 13: The path gets harder",
+    "chapterKeys": [
+      "chapter-13"
+    ],
+    "scene": "Fuel beneath the ruined refinery",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to STO579W facility",
+    "summary": "They find the bombed refinery. 5B reconstructs its layout and shifts a concrete slab; the protected underground tanks still hold fuel. They refill the truck and discover the trapped staff’s skeletons, then sleep in the cafeteria.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 67",
+    "raw": [
+      "11 July 2468",
+      "+47 days",
+      "Journey to STO579W facility",
+      "Chapter 13: The path gets harder",
+      null,
+      "They find the bombed refinery. 5B reconstructs its layout and shifts a concrete slab; the protected underground tanks still hold fuel. They refill the truck and discover the trapped staff’s skeletons, then sleep in the cafeteria.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-68",
+    "row": 68,
+    "phase": "main",
+    "day": 68,
+    "day_label": "+48-52 days",
+    "date": "12-16 July 2468",
+    "time": "",
+    "chapter": "Chapter 14: An unexpected invite",
+    "chapterKeys": [
+      "chapter-14"
+    ],
+    "scene": "Back into the swamps",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Journey to STO579W facility",
+    "summary": "Struggling again in the swamps",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 68",
+    "raw": [
+      "12-16 July 2468",
+      "+48-52 days",
+      "Journey to STO579W facility",
+      "Chapter 14: An unexpected invite",
+      null,
+      "Struggling again in the swamps",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-69",
+    "row": 69,
+    "phase": "main",
+    "day": 69,
+    "day_label": "+52 days",
+    "date": "16 July 2468",
+    "time": "",
+    "chapter": "Chapter 14: An unexpected invite",
+    "chapterKeys": [
+      "chapter-14"
+    ],
+    "scene": "Lunch with Lana and Misha",
+    "characters": [
+      "Mika",
+      "5B",
+      "Lana",
+      "Misha"
+    ],
+    "charactersOriginal": "Mika, 5B, Lana, Misha",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to STO579W facility",
+    "summary": "Lana and Misha host Mika and 5B for lunch. They explain 5B’s withheld system upgrade; Misha marks the railway route across the Urals, warning that the truck must be left behind. The visitors leave late that afternoon.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 69",
+    "raw": [
+      "16 July 2468",
+      "+52 days",
+      "Journey to STO579W facility",
+      "Chapter 14: An unexpected invite",
+      null,
+      "Lana and Misha host Mika and 5B for lunch. They explain 5B’s withheld system upgrade; Misha marks the railway route across the Urals, warning that the truck must be left behind. The visitors leave late that afternoon.",
+      "Mika, 5B, Lana, Misha",
+      null
+    ]
+  },
+  {
+    "id": "row-70",
+    "row": 70,
+    "phase": "main",
+    "day": 70,
+    "day_label": "+52–59 days (approx.)",
+    "date": "About 16–23 July 2468",
+    "time": "",
+    "chapter": "Chapter 15: The Forbidden Zone",
+    "chapterKeys": [
+      "chapter-15"
+    ],
+    "scene": "Reaching the end of the road",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Farm to town at the Ural railway",
+    "summary": "After leaving Lana and Misha, they spend another week crossing mud and swamps before reaching dry ground and the end of the drivable route.",
+    "details": "—",
+    "tags": [
+      "Journey to STO579W"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 70",
+    "raw": [
+      "About 16–23 July 2468",
+      "+52–59 days (approx.)",
+      "Farm to town at the Ural railway",
+      "Chapter 15: The Forbidden Zone",
+      null,
+      "After leaving Lana and Misha, they spend another week crossing mud and swamps before reaching dry ground and the end of the drivable route.",
+      "Mika, 5B",
+      "Journey to STO579W"
+    ]
+  },
+  {
+    "id": "row-71",
+    "row": 71,
+    "phase": "main",
+    "day": 71,
+    "day_label": "+59 days",
+    "date": "23 July 2468",
+    "time": "",
+    "chapter": "Chapter 15: The forbidden zone",
+    "chapterKeys": [
+      "chapter-15"
+    ],
+    "scene": "Planning the journey on foot",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to STO579W facility",
+    "summary": "The road ends they have to decide if continue by foot",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 71",
+    "raw": [
+      "23 July 2468",
+      "+59 days",
+      "Journey to STO579W facility",
+      "Chapter 15: The forbidden zone",
+      null,
+      "The road ends they have to decide if continue by foot",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-72",
+    "row": 72,
+    "phase": "main",
+    "day": 72,
+    "day_label": "+60 days",
+    "date": "24 July 2468",
+    "time": "",
+    "chapter": "Chapter 15: The forbidden zone",
+    "chapterKeys": [
+      "chapter-15"
+    ],
+    "scene": "Leaving the KrAZ behind",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to STO579W facility",
+    "summary": "Leaving the truck: begin of the journey by foot along the railway",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 72",
+    "raw": [
+      "24 July 2468",
+      "+60 days",
+      "Journey to STO579W facility",
+      "Chapter 15: The forbidden zone",
+      null,
+      "Leaving the truck: begin of the journey by foot along the railway",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-73",
+    "row": 73,
+    "phase": "main",
+    "day": 73,
+    "day_label": "+61 days",
+    "date": "25 July 2468",
+    "time": "",
+    "chapter": "Chapter 15: The forbidden zone",
+    "chapterKeys": [
+      "chapter-15"
+    ],
+    "scene": "A rest beside the river",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to STO579W facility",
+    "summary": "Mika wakes sore on the second walking day. They stop early beside a river, bathe and sleep close together under the stars.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 73",
+    "raw": [
+      "25 July 2468",
+      "+61 days",
+      "Journey to STO579W facility",
+      "Chapter 15: The forbidden zone",
+      null,
+      "Mika wakes sore on the second walking day. They stop early beside a river, bathe and sleep close together under the stars.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-74",
+    "row": 74,
+    "phase": "main",
+    "day": 74,
+    "day_label": "+62 days",
+    "date": "26 July 2468",
+    "time": "",
+    "chapter": "Chapter 15: The forbidden zone",
+    "chapterKeys": [
+      "chapter-15"
+    ],
+    "scene": "The railway begins to climb",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to STO579W facility",
+    "summary": "The path begin to rise, lowering pace",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 74",
+    "raw": [
+      "26 July 2468",
+      "+62 days",
+      "Journey to STO579W facility",
+      "Chapter 15: The forbidden zone",
+      null,
+      "The path begin to rise, lowering pace",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-75",
+    "row": 75,
+    "phase": "main",
+    "day": 75,
+    "day_label": "+63 days",
+    "date": "27 July 2468",
+    "time": "",
+    "chapter": "Chapter 15: The forbidden zone",
+    "chapterKeys": [
+      "chapter-15"
+    ],
+    "scene": "Sheltering from the storm",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to STO579W facility",
+    "summary": "Rain and storm",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 75",
+    "raw": [
+      "27 July 2468",
+      "+63 days",
+      "Journey to STO579W facility",
+      "Chapter 15: The forbidden zone",
+      null,
+      "Rain and storm",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-76",
+    "row": 76,
+    "phase": "main",
+    "day": 76,
+    "day_label": "+64 days",
+    "date": "28 July 2468",
+    "time": "",
+    "chapter": "Chapter 15: The forbidden zone",
+    "chapterKeys": [
+      "chapter-15"
+    ],
+    "scene": "Another day of rain",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to STO579W facility",
+    "summary": "Rain. It calms in the evening",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 76",
+    "raw": [
+      "28 July 2468",
+      "+64 days",
+      "Journey to STO579W facility",
+      "Chapter 15: The forbidden zone",
+      null,
+      "Rain. It calms in the evening",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-77",
+    "row": 77,
+    "phase": "main",
+    "day": 77,
+    "day_label": "+65 days",
+    "date": "29 July 2468",
+    "time": "",
+    "chapter": "Chapter 15: The forbidden zone",
+    "chapterKeys": [
+      "chapter-15"
+    ],
+    "scene": "Resting in an abandoned village",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to STO579W facility",
+    "summary": "Overcast. Arrive at the abandoned village",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 77",
+    "raw": [
+      "29 July 2468",
+      "+65 days",
+      "Journey to STO579W facility",
+      "Chapter 15: The forbidden zone",
+      null,
+      "Overcast. Arrive at the abandoned village",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-78",
+    "row": 78,
+    "phase": "main",
+    "day": 78,
+    "day_label": "+66 days",
+    "date": "30 July 2468",
+    "time": "",
+    "chapter": "Chapter 15: The forbidden zone",
+    "chapterKeys": [
+      "chapter-15"
+    ],
+    "scene": "5B saves Mika at the collapsed bridge",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to STO579W facility",
+    "summary": "Sunny again.Collapsed bridge. Mika close to death while crossing it.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 78",
+    "raw": [
+      "30 July 2468",
+      "+66 days",
+      "Journey to STO579W facility",
+      "Chapter 15: The forbidden zone",
+      null,
+      "Sunny again.Collapsed bridge. Mika close to death while crossing it.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-79",
+    "row": 79,
+    "phase": "main",
+    "day": 79,
+    "day_label": "+67 days",
+    "date": "31 July 2468",
+    "time": "",
+    "chapter": "Chapter 15: The forbidden zone",
+    "chapterKeys": [
+      "chapter-15"
+    ],
+    "scene": "Turning north at the railway junction",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to STO579W facility",
+    "summary": "Railway intersection, going north",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 79",
+    "raw": [
+      "31 July 2468",
+      "+67 days",
+      "Journey to STO579W facility",
+      "Chapter 15: The forbidden zone",
+      null,
+      "Railway intersection, going north",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-80",
+    "row": 80,
+    "phase": "main",
+    "day": 80,
+    "day_label": "+68 days",
+    "date": "01 August 2468",
+    "time": "",
+    "chapter": "Chapter 15: The forbidden zone",
+    "chapterKeys": [
+      "chapter-15"
+    ],
+    "scene": "Continuing north",
+    "characters": [],
+    "charactersOriginal": "",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to STO579W facility",
+    "summary": "uneventful: going north",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 80",
+    "raw": [
+      "01 August 2468",
+      "+68 days",
+      "Journey to STO579W facility",
+      "Chapter 15: The forbidden zone",
+      null,
+      "uneventful: going north",
+      null,
+      null
+    ]
+  },
+  {
+    "id": "row-81",
+    "row": 81,
+    "phase": "main",
+    "day": 81,
+    "day_label": "+69 days",
+    "date": "02 August 2468",
+    "time": "",
+    "chapter": "Chapter 15: The forbidden zone",
+    "chapterKeys": [
+      "chapter-15"
+    ],
+    "scene": "STO579W and 5B’s shutdown",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Journey to STO579W facility",
+    "summary": "They reach STO579W and find preserved vehicles, batteries and android spares. An automated defence gun fires once and jams; the shot destroys 5B’s pump and reactor. Her frame shuts down after she thanks Mika.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 81",
+    "raw": [
+      "02 August 2468",
+      "+69 days",
+      "Journey to STO579W facility",
+      "Chapter 15: The forbidden zone",
+      null,
+      "They reach STO579W and find preserved vehicles, batteries and android spares. An automated defence gun fires once and jams; the shot destroys 5B’s pump and reactor. Her frame shuts down after she thanks Mika.",
+      "Mika, 5B",
+      null
+    ]
+  },
+  {
+    "id": "row-82",
+    "row": 82,
+    "phase": "main",
+    "day": 82,
+    "day_label": "+69 days",
+    "date": "2 August 2468 – after shutdown",
+    "time": "",
+    "chapter": "Chapter 15: The Forbidden Zone",
+    "chapterKeys": [
+      "chapter-15"
+    ],
+    "scene": "Saving 5B’s memory chip",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B"
+    ],
+    "charactersOriginal": "Mika, 5B (memory chip), 16B (memory chip)",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "STO579W warehouse",
+    "summary": "Mika extracts 5B’s memory chip, marks it with a lock of her hair and places it alongside 16B’s chip in the necklace pouch.",
+    "details": "—",
+    "tags": [
+      "Memory chips"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 82",
+    "raw": [
+      "2 August 2468 – after shutdown",
+      "+69 days",
+      "STO579W warehouse",
+      "Chapter 15: The Forbidden Zone",
+      null,
+      "Mika extracts 5B’s memory chip, marks it with a lock of her hair and places it alongside 16B’s chip in the necklace pouch.",
+      "Mika, 5B (memory chip), 16B (memory chip)",
+      "Memory chips"
+    ]
+  },
+  {
+    "id": "row-83",
+    "row": 83,
+    "phase": "main",
+    "day": 83,
+    "day_label": "+69–74 days",
+    "date": "2–7 August 2468 (about five days)",
+    "time": "",
+    "chapter": "Chapter 15: The forbidden zone",
+    "chapterKeys": [
+      "chapter-15"
+    ],
+    "scene": "Mika walks back alone",
+    "characters": [
+      "Mika"
+    ],
+    "charactersOriginal": "Mika",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Return from STO579W facility",
+    "summary": "Mika walks back alone in a dazed state, covering over 30 km per day. He reaches the KrAZ after five days.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 83",
+    "raw": [
+      "2–7 August 2468 (about five days)",
+      "+69–74 days",
+      "Return from STO579W facility",
+      "Chapter 15: The forbidden zone",
+      null,
+      "Mika walks back alone in a dazed state, covering over 30 km per day. He reaches the KrAZ after five days.",
+      "Mika",
+      null
+    ]
+  },
+  {
+    "id": "row-84",
+    "row": 84,
+    "phase": "main",
+    "day": 84,
+    "day_label": "+74 days",
+    "date": "07 August 2468",
+    "time": "",
+    "chapter": "Chapter 15: The forbidden zone",
+    "chapterKeys": [
+      "chapter-15"
+    ],
+    "scene": "Choosing the northern route to Europe",
+    "characters": [
+      "Mika"
+    ],
+    "charactersOriginal": "Mika",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Return from STO579W facility",
+    "summary": "Back to the truck. Decision: going to Europe",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 84",
+    "raw": [
+      "07 August 2468",
+      "+74 days",
+      "Return from STO579W facility",
+      "Chapter 15: The forbidden zone",
+      null,
+      "Back to the truck. Decision: going to Europe",
+      "Mika",
+      null
+    ]
+  },
+  {
+    "id": "row-85",
+    "row": 85,
+    "phase": "main",
+    "day": 85,
+    "day_label": "+74–148 days (approx.)",
+    "date": "August–October 2468 (undated within journey)",
+    "time": "",
+    "chapter": "Chapter 16: An unknown world",
+    "chapterKeys": [
+      "chapter-16"
+    ],
+    "scene": "The tank trailer and European journey",
+    "characters": [
+      "Mika"
+    ],
+    "charactersOriginal": "Mika",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Northern route and former European territory",
+    "summary": "Mika finds a kerosene-filled tank trailer at an abandoned airport and tows it to extend his range. Wildlife supports his journey. He also salvages repairable batteries and other valuable parts.",
+    "details": "—",
+    "tags": [
+      "Journey to revive 5B"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 85",
+    "raw": [
+      "August–October 2468 (undated within journey)",
+      "+74–148 days (approx.)",
+      "Northern route and former European territory",
+      "Chapter 16: An unknown world",
+      null,
+      "Mika finds a kerosene-filled tank trailer at an abandoned airport and tows it to extend his range. Wildlife supports his journey. He also salvages repairable batteries and other valuable parts.",
+      "Mika",
+      "Journey to revive 5B"
+    ]
+  },
+  {
+    "id": "row-86",
+    "row": 86,
+    "phase": "main",
+    "day": 86,
+    "day_label": "+148 days",
+    "date": "20 October 2468 (inferred)",
+    "time": "",
+    "chapter": "Chapter 16: An unknown world",
+    "chapterKeys": [
+      "chapter-16"
+    ],
+    "scene": "Leaving the drained KrAZ",
+    "characters": [
+      "Mika"
+    ],
+    "charactersOriginal": "Mika",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Arrive in Europe",
+    "summary": "Near Dresden, Mika leaves the drained KrAZ and tank trailer and continues south on foot toward Synthtech.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 86",
+    "raw": [
+      "20 October 2468 (inferred)",
+      "+148 days",
+      "Arrive in Europe",
+      "Chapter 16: An unknown world",
+      null,
+      "Near Dresden, Mika leaves the drained KrAZ and tank trailer and continues south on foot toward Synthtech.",
+      "Mika",
+      null
+    ]
+  },
+  {
+    "id": "row-87",
+    "row": 87,
+    "phase": "main",
+    "day": 87,
+    "day_label": "+148 days",
+    "date": "20 October 2468",
+    "time": "",
+    "chapter": "Chapter 16: An unknown world",
+    "chapterKeys": [
+      "chapter-16"
+    ],
+    "scene": "First night on foot near Dresden",
+    "characters": [
+      "Mika"
+    ],
+    "charactersOriginal": "Mika",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "To Dresden",
+    "summary": "On his first walking day, Mika hunts and spends the night sheltered in the ruins of a service building.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 87",
+    "raw": [
+      "20 October 2468",
+      "+148 days",
+      "To Dresden",
+      "Chapter 16: An unknown world",
+      null,
+      "On his first walking day, Mika hunts and spends the night sheltered in the ruins of a service building.",
+      "Mika",
+      null
+    ]
+  },
+  {
+    "id": "row-88",
+    "row": 88,
+    "phase": "main",
+    "day": 88,
+    "day_label": "+149 days",
+    "date": "21 October 2468",
+    "time": "",
+    "chapter": "Chapter 16: An unknown world",
+    "chapterKeys": [
+      "chapter-16"
+    ],
+    "scene": "Shelter in an abandoned truck",
+    "characters": [
+      "Mika"
+    ],
+    "charactersOriginal": "Mika",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "To Dresden",
+    "summary": "Second night in the abandoned truck’s cab",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 88",
+    "raw": [
+      "21 October 2468",
+      "+149 days",
+      "To Dresden",
+      "Chapter 16: An unknown world",
+      null,
+      "Second night in the abandoned truck’s cab",
+      "Mika",
+      null
+    ]
+  },
+  {
+    "id": "row-89",
+    "row": 89,
+    "phase": "main",
+    "day": 89,
+    "day_label": "+150 days",
+    "date": "22 October 2468",
+    "time": "",
+    "chapter": "Chapter 16: An unknown world",
+    "chapterKeys": [
+      "chapter-16"
+    ],
+    "scene": "The red dress and the Dresden android",
+    "characters": [
+      "Mika",
+      "4T"
+    ],
+    "charactersOriginal": "Mika, 4T (Forth)",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "At Dresden",
+    "summary": "Mika reaches central Dresden, retrieves the red dress for Sonja and encounters a heavy combat android. The android directs him to Synthtech and confirms that two female frames survive. Mika sleeps at the railway station.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 89",
+    "raw": [
+      "22 October 2468",
+      "+150 days",
+      "At Dresden",
+      "Chapter 16: An unknown world",
+      null,
+      "Mika reaches central Dresden, retrieves the red dress for Sonja and encounters a heavy combat android. The android directs him to Synthtech and confirms that two female frames survive. Mika sleeps at the railway station.",
+      "Mika, 4T (Forth)",
+      null
+    ]
+  },
+  {
+    "id": "row-90",
+    "row": 90,
+    "phase": "main",
+    "day": 90,
+    "day_label": "+151 days",
+    "date": "23 October 2468",
+    "time": "",
+    "chapter": "Chapter 16: An unknown world",
+    "chapterKeys": [
+      "chapter-16"
+    ],
+    "scene": "Finding the Synthtech facility",
+    "characters": [
+      "Mika"
+    ],
+    "charactersOriginal": "Mika",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Arrive at Synthtech facility",
+    "summary": "Finally at 5B’s facility: Mika tries to revive 5B",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 90",
+    "raw": [
+      "23 October 2468",
+      "+151 days",
+      "Arrive at Synthtech facility",
+      "Chapter 16: An unknown world",
+      null,
+      "Finally at 5B’s facility: Mika tries to revive 5B",
+      "Mika",
+      null
+    ]
+  },
+  {
+    "id": "row-91",
+    "row": 91,
+    "phase": "main",
+    "day": 91,
+    "day_label": "+152 days",
+    "date": "24 October 2468 – 13:12–19:12",
+    "time": "",
+    "chapter": "Chapter 17: Reboot",
+    "chapterKeys": [
+      "chapter-17"
+    ],
+    "scene": "16B awakens and solves the boot failure",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B"
+    ],
+    "charactersOriginal": "Mika, 5B, 16B",
+    "source": "Timestamp included",
+    "bucket": "log",
+    "location": "At Synthtech facility",
+    "summary": "Repeated 5B boot attempts fail. Mika deliberately tests 16B’s chip, reviving her at 15:41:13. After calibration she identifies OS incompatibility, obtains access and downgrades the second frame to accept 5B’s revision-two memories.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 91",
+    "raw": [
+      "24 October 2468 – 13:12–19:12",
+      "+152 days",
+      "At Synthtech facility",
+      "Chapter 17: Reboot",
+      null,
+      "Repeated 5B boot attempts fail. Mika deliberately tests 16B’s chip, reviving her at 15:41:13. After calibration she identifies OS incompatibility, obtains access and downgrades the second frame to accept 5B’s revision-two memories.",
+      "Mika, 5B, 16B",
+      null
+    ]
+  },
+  {
+    "id": "row-92",
+    "row": 92,
+    "phase": "main",
+    "day": 92,
+    "day_label": "+152 days",
+    "date": "24 October 2468 – 19:12:09",
+    "time": "",
+    "chapter": "Chapter 17: Reboot",
+    "chapterKeys": [
+      "chapter-17"
+    ],
+    "scene": "5B returns in a new frame",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B"
+    ],
+    "charactersOriginal": "Mika, 5B, 16B",
+    "source": "Timestamp included",
+    "bucket": "log",
+    "location": "At Synthtech facility",
+    "summary": "5B successfully reboots in a new black-haired frame and reunites with Mika and 16B. Mika calibrates her; she hunts food for him. She subsequently declines an upgrade to revision three.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 92",
+    "raw": [
+      "24 October 2468 – 19:12:09",
+      "+152 days",
+      "At Synthtech facility",
+      "Chapter 17: Reboot",
+      null,
+      "5B successfully reboots in a new black-haired frame and reunites with Mika and 16B. Mika calibrates her; she hunts food for him. She subsequently declines an upgrade to revision three.",
+      "Mika, 5B, 16B",
+      null
+    ]
+  },
+  {
+    "id": "row-93",
+    "row": 93,
+    "phase": "main",
+    "day": 93,
+    "day_label": "+153 days",
+    "date": "25 October 2468",
+    "time": "",
+    "chapter": "Chapter 18: A wandering trio",
+    "chapterKeys": [
+      "chapter-18"
+    ],
+    "scene": "A trio forms and meets 4T",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B",
+      "4T"
+    ],
+    "charactersOriginal": "Mika, 5B, 16B, 4T (Forth)",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "At Synthtech facility",
+    "summary": "5B chooses to return with Mika and asks 16B to join them. They meet 4T (Forth), unit 522E-4T. He declines to join and recommends a southern overland route instead of the northern route in winter.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 93",
+    "raw": [
+      "25 October 2468",
+      "+153 days",
+      "At Synthtech facility",
+      "Chapter 18: A wandering trio",
+      null,
+      "5B chooses to return with Mika and asks 16B to join them. They meet 4T (Forth), unit 522E-4T. He declines to join and recommends a southern overland route instead of the northern route in winter.",
+      "Mika, 5B, 16B, 4T (Forth)",
+      null
+    ]
+  },
+  {
+    "id": "row-94",
+    "row": 94,
+    "phase": "main",
+    "day": 94,
+    "day_label": "+153–156 days",
+    "date": "25-28 October 2468",
+    "time": "",
+    "chapter": "Chapter 18: A wandering trio",
+    "chapterKeys": [
+      "chapter-18"
+    ],
+    "scene": "Recovering the KrAZ",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B"
+    ],
+    "charactersOriginal": "Mika, 5B, 16B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Dresden periphery",
+    "summary": "Recovering the truck",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 94",
+    "raw": [
+      "25-28 October 2468",
+      "+153–156 days",
+      "Dresden periphery",
+      "Chapter 18: A wandering trio",
+      null,
+      "Recovering the truck",
+      "Mika, 5B, 16B",
+      null
+    ]
+  },
+  {
+    "id": "row-95",
+    "row": 95,
+    "phase": "main",
+    "day": 95,
+    "day_label": "+157 days",
+    "date": "29 October 2468",
+    "time": "",
+    "chapter": "Chapter 18: A wandering trio",
+    "chapterKeys": [
+      "chapter-18"
+    ],
+    "scene": "Farewell to 4T",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B",
+      "4T"
+    ],
+    "charactersOriginal": "Mika, 5B, 16B, 4T (Forth)",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "At Dresden",
+    "summary": "After recovering and refuelling the KrAZ and trailer, they say farewell to 4T in central Dresden. He supplies heavy water before they head southeast.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 95",
+    "raw": [
+      "29 October 2468",
+      "+157 days",
+      "At Dresden",
+      "Chapter 18: A wandering trio",
+      null,
+      "After recovering and refuelling the KrAZ and trailer, they say farewell to 4T in central Dresden. He supplies heavy water before they head southeast.",
+      "Mika, 5B, 16B, 4T (Forth)",
+      null
+    ]
+  },
+  {
+    "id": "row-96",
+    "row": 96,
+    "phase": "main",
+    "day": 96,
+    "day_label": "+158–192 days",
+    "date": "30 October-03 December 2468",
+    "time": "",
+    "chapter": "Chapter 18: A wandering trio",
+    "chapterKeys": [
+      "chapter-18"
+    ],
+    "scene": "Taking the southern route home",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B"
+    ],
+    "charactersOriginal": "Mika, 5B, 16B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Travelling along southern route",
+    "summary": "They follow the southern overland route near the Black and Caspian Seas, collecting food and fuel along the way, and reach the original desert battlefield on 3 December.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 96",
+    "raw": [
+      "30 October-03 December 2468",
+      "+158–192 days",
+      "Travelling along southern route",
+      "Chapter 18: A wandering trio",
+      null,
+      "They follow the southern overland route near the Black and Caspian Seas, collecting food and fuel along the way, and reach the original desert battlefield on 3 December.",
+      "Mika, 5B, 16B",
+      null
+    ]
+  },
+  {
+    "id": "row-97",
+    "row": 97,
+    "phase": "main",
+    "day": 97,
+    "day_label": "+192 days",
+    "date": "3 December 2468 – 14:12:41",
+    "time": "",
+    "chapter": "Chapter 18: A wandering trio",
+    "chapterKeys": [
+      "chapter-18"
+    ],
+    "scene": "Feebie’s birthday at the battlefield",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B"
+    ],
+    "charactersOriginal": "Mika, 5B, 16B",
+    "source": "Timestamp included",
+    "bucket": "log",
+    "location": "Original Great Cold Desert battlefield",
+    "summary": "Mika wishes 5B a happy birthday on the return past the battlefield. She recalls the reminder set in June, which was disabled by her frame change.",
+    "details": "—",
+    "tags": [
+      "5B identity"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 97",
+    "raw": [
+      "3 December 2468 – 14:12:41",
+      "+192 days",
+      "Original Great Cold Desert battlefield",
+      "Chapter 18: A wandering trio",
+      null,
+      "Mika wishes 5B a happy birthday on the return past the battlefield. She recalls the reminder set in June, which was disabled by her frame change.",
+      "Mika, 5B, 16B",
+      "5B identity"
+    ]
+  },
+  {
+    "id": "row-98",
+    "row": 98,
+    "phase": "main",
+    "day": 98,
+    "day_label": "+192–194 days",
+    "date": "3–5 December 2468 (before village arrival)",
+    "time": "",
+    "chapter": "Chapter 18: A wandering trio",
+    "chapterKeys": [
+      "chapter-18"
+    ],
+    "scene": "Leaving the tank trailer at the crossroads",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B"
+    ],
+    "charactersOriginal": "Mika, 5B, 16B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Crossroads toward Market Town and Mika’s village",
+    "summary": "They leave the tank trailer at the crossroads after transferring fuel, planning to recover it on a later northern trip.",
+    "details": "—",
+    "tags": [
+      "Truck and fuel"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 98",
+    "raw": [
+      "3–5 December 2468 (before village arrival)",
+      "+192–194 days",
+      "Crossroads toward Market Town and Mika’s village",
+      "Chapter 18: A wandering trio",
+      null,
+      "They leave the tank trailer at the crossroads after transferring fuel, planning to recover it on a later northern trip.",
+      "Mika, 5B, 16B",
+      "Truck and fuel"
+    ]
+  },
+  {
+    "id": "row-99",
+    "row": 99,
+    "phase": "main",
+    "day": 99,
+    "day_label": "+194 days",
+    "date": "05 December 2468",
+    "time": "",
+    "chapter": "Chapter 18: A wandering trio",
+    "chapterKeys": [
+      "chapter-18"
+    ],
+    "scene": "Homecoming and power plant maintenance",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B"
+    ],
+    "charactersOriginal": "Mika, 5B, 16B",
+    "source": "Calendar date",
+    "bucket": "narrative",
+    "location": "Arrive at Mika’s Village",
+    "summary": "They return to Mika’s village before noon. The power plant is still operating at low output after 183 days; they perform basic maintenance and refuel both androids, leaving it at low output. Mika rests.",
+    "details": "—",
+    "tags": [],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 99",
+    "raw": [
+      "05 December 2468",
+      "+194 days",
+      "Arrive at Mika’s Village",
+      "Chapter 18: A wandering trio",
+      null,
+      "They return to Mika’s village before noon. The power plant is still operating at low output after 183 days; they perform basic maintenance and refuel both androids, leaving it at low output. Mika rests.",
+      "Mika, 5B, 16B",
+      null
+    ]
+  },
+  {
+    "id": "row-100",
+    "row": 100,
+    "phase": "main",
+    "day": 100,
+    "day_label": "+194–201 days",
+    "date": "5–12 December 2468 (inferred)",
+    "time": "",
+    "chapter": "Chapter 19: Back in the ‘old world’",
+    "chapterKeys": [
+      "chapter-19"
+    ],
+    "scene": "A week of rest and preparation",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B"
+    ],
+    "charactersOriginal": "Mika, 5B, 16B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Mika’s village",
+    "summary": "The trio rests for a week and prepares salvaged goods for trade. The KrAZ now has a working battery, thanks to batteries Mika recovered during his European journey.",
+    "details": "—",
+    "tags": [
+      "Rest and trade"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 100",
+    "raw": [
+      "5–12 December 2468 (inferred)",
+      "+194–201 days",
+      "Mika’s village",
+      "Chapter 19: Back in the ‘old world’",
+      null,
+      "The trio rests for a week and prepares salvaged goods for trade. The KrAZ now has a working battery, thanks to batteries Mika recovered during his European journey.",
+      "Mika, 5B, 16B",
+      "Rest and trade"
+    ]
+  },
+  {
+    "id": "row-101",
+    "row": 101,
+    "phase": "main",
+    "day": 101,
+    "day_label": "+201 days (approx.)",
+    "date": "About 12 December 2468",
+    "time": "",
+    "chapter": "Chapter 19: Back in the ‘old world’",
+    "chapterKeys": [
+      "chapter-19"
+    ],
+    "scene": "Setting out for the camp again",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B"
+    ],
+    "charactersOriginal": "Mika, 5B, 16B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Village to Market Town",
+    "summary": "They depart for the Androids’ Camp in persistent rain, fit tyre chains and leave the trailer at the crossroads because the muddy route cannot support towing it.",
+    "details": "—",
+    "tags": [
+      "Second camp journey"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 101",
+    "raw": [
+      "About 12 December 2468",
+      "+201 days (approx.)",
+      "Village to Market Town",
+      "Chapter 19: Back in the ‘old world’",
+      null,
+      "They depart for the Androids’ Camp in persistent rain, fit tyre chains and leave the trailer at the crossroads because the muddy route cannot support towing it.",
+      "Mika, 5B, 16B",
+      "Second camp journey"
+    ]
+  },
+  {
+    "id": "row-102",
+    "row": 102,
+    "phase": "main",
+    "day": 102,
+    "day_label": "+208 days (approx.)",
+    "date": "About 19 December 2468",
+    "time": "",
+    "chapter": "Chapter 19: Back in the ‘old world’",
+    "chapterKeys": [
+      "chapter-19"
+    ],
+    "scene": "Trading the European salvage",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B",
+      "Seth"
+    ],
+    "charactersOriginal": "Mika, 5B, 16B, Seth",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Market Town",
+    "summary": "After roughly a week of travel, Mika trades the European salvage, including working batteries, for fuel and long-term credits. 5B shows 16B the peaceful market; they refuel and continue north.",
+    "details": "—",
+    "tags": [
+      "Trade and adaptation"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 102",
+    "raw": [
+      "About 19 December 2468",
+      "+208 days (approx.)",
+      "Market Town",
+      "Chapter 19: Back in the ‘old world’",
+      null,
+      "After roughly a week of travel, Mika trades the European salvage, including working batteries, for fuel and long-term credits. 5B shows 16B the peaceful market; they refuel and continue north.",
+      "Mika, 5B, 16B, Seth",
+      "Trade and adaptation"
+    ]
+  },
+  {
+    "id": "row-103",
+    "row": 103,
+    "phase": "main",
+    "day": 103,
+    "day_label": "+218 days (approx.)",
+    "date": "Late December 2468 (about 29 December)",
+    "time": "",
+    "chapter": "Chapters 19 and 20",
+    "chapterKeys": [
+      "chapter-19",
+      "chapter-20"
+    ],
+    "scene": "Returning to the Androids’ Camp",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B",
+      "Alex",
+      "Masha",
+      "Michael"
+    ],
+    "charactersOriginal": "Mika, 5B, 16B, Alex, Masha, Michael",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Androids’ Camp",
+    "summary": "Ten days after leaving Market Town they return to the camp. Alex welcomes them, Masha fears the two combat androids, and Michael accepts 5B and 16B into the community.",
+    "details": "—",
+    "tags": [
+      "Community and new purpose"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 103",
+    "raw": [
+      "Late December 2468 (about 29 December)",
+      "+218 days (approx.)",
+      "Androids’ Camp",
+      "Chapters 19 and 20",
+      null,
+      "Ten days after leaving Market Town they return to the camp. Alex welcomes them, Masha fears the two combat androids, and Michael accepts 5B and 16B into the community.",
+      "Mika, 5B, 16B, Alex, Masha, Michael",
+      "Community and new purpose"
+    ]
+  },
+  {
+    "id": "row-104",
+    "row": 104,
+    "phase": "main",
+    "day": 104,
+    "day_label": "About +218 days",
+    "date": "Late December 2468 (day of camp return)",
+    "time": "",
+    "chapter": "Chapter 20: Memories",
+    "chapterKeys": [
+      "chapter-20"
+    ],
+    "scene": "Sonja receives the red dress",
+    "characters": [
+      "Mika",
+      "Sonja",
+      "Tina"
+    ],
+    "charactersOriginal": "Mika, Sonja, Tina",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Androids’ Camp, textile repair area",
+    "summary": "Mika gives Sonja the red cocktail dress he recovered in Dresden. She is deeply moved, kisses him and thanks him.",
+    "details": "—",
+    "tags": [
+      "Sonja’s dress"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 104",
+    "raw": [
+      "Late December 2468 (day of camp return)",
+      "About +218 days",
+      "Androids’ Camp, textile repair area",
+      "Chapter 20: Memories",
+      null,
+      "Mika gives Sonja the red cocktail dress he recovered in Dresden. She is deeply moved, kisses him and thanks him.",
+      "Mika, Sonja, Tina",
+      "Sonja’s dress"
+    ]
+  },
+  {
+    "id": "row-105",
+    "row": 105,
+    "phase": "main",
+    "day": 105,
+    "day_label": "After about +218 days",
+    "date": "Winter 2468–spring 2469",
+    "time": "",
+    "chapter": "Chapter 20: Memories",
+    "chapterKeys": [
+      "chapter-20"
+    ],
+    "scene": "Finding work and a place in the community",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B",
+      "Tina",
+      "Masha",
+      "Alex"
+    ],
+    "charactersOriginal": "Mika, 5B, 16B, Tina, Masha, Alex",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Androids’ Camp",
+    "summary": "5B and 16B settle into precision repair work and share new accommodation. Mika becomes Tina’s assistant. Over more than three months, Masha grows comfortable with the combat androids; 16B works toward restoring Alex’s arm.",
+    "details": "—",
+    "tags": [
+      "Peaceful lives"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 105",
+    "raw": [
+      "Winter 2468–spring 2469",
+      "After about +218 days",
+      "Androids’ Camp",
+      "Chapter 20: Memories",
+      null,
+      "5B and 16B settle into precision repair work and share new accommodation. Mika becomes Tina’s assistant. Over more than three months, Masha grows comfortable with the combat androids; 16B works toward restoring Alex’s arm.",
+      "Mika, 5B, 16B, Tina, Masha, Alex",
+      "Peaceful lives"
+    ]
+  },
+  {
+    "id": "row-106",
+    "row": 106,
+    "phase": "main",
+    "day": 106,
+    "day_label": "Exact offset unknown",
+    "date": "Spring 2469 (more than three months after camp return)",
+    "time": "",
+    "chapter": "Chapter 20: Memories",
+    "chapterKeys": [
+      "chapter-20"
+    ],
+    "scene": "5B chooses to return with Mika",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B"
+    ],
+    "charactersOriginal": "Mika, 5B, 16B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Androids’ Camp",
+    "summary": "Mika decides to return to his quiet village. 5B chooses to accompany him to make more memories together; 16B remains at the camp, with future visits planned.",
+    "details": "—",
+    "tags": [
+      "Companionship and choice"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 106",
+    "raw": [
+      "Spring 2469 (more than three months after camp return)",
+      "Exact offset unknown",
+      "Androids’ Camp",
+      "Chapter 20: Memories",
+      null,
+      "Mika decides to return to his quiet village. 5B chooses to accompany him to make more memories together; 16B remains at the camp, with future visits planned.",
+      "Mika, 5B, 16B",
+      "Companionship and choice"
+    ]
+  },
+  {
+    "id": "row-107",
+    "row": 107,
+    "phase": "main",
+    "day": 107,
+    "day_label": "Exact offset unknown",
+    "date": "Spring 2469 (before departure)",
+    "time": "",
+    "chapter": "Chapter 20: Memories",
+    "chapterKeys": [
+      "chapter-20"
+    ],
+    "scene": "Sonja’s farewell in the red dress",
+    "characters": [
+      "Mika",
+      "Sonja"
+    ],
+    "charactersOriginal": "Mika, Sonja",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Fields outside the Androids’ Camp",
+    "summary": "Sonja wears the red dress for a private walk with Mika. They talk about affection and the past, watch the sunset and share a farewell kiss.",
+    "details": "—",
+    "tags": [
+      "Sonja’s dress and farewell"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 107",
+    "raw": [
+      "Spring 2469 (before departure)",
+      "Exact offset unknown",
+      "Fields outside the Androids’ Camp",
+      "Chapter 20: Memories",
+      null,
+      "Sonja wears the red dress for a private walk with Mika. They talk about affection and the past, watch the sunset and share a farewell kiss.",
+      "Mika, Sonja",
+      "Sonja’s dress and farewell"
+    ]
+  },
+  {
+    "id": "row-108",
+    "row": 108,
+    "phase": "main",
+    "day": 108,
+    "day_label": "Exact offset unknown",
+    "date": "Spring 2469 (following day)",
+    "time": "",
+    "chapter": "Chapter 20: Memories",
+    "chapterKeys": [
+      "chapter-20"
+    ],
+    "scene": "Leaving the camp as a pair",
+    "characters": [
+      "Mika",
+      "5B",
+      "16B",
+      "Sonja",
+      "Michael"
+    ],
+    "charactersOriginal": "Mika, 5B, 16B, Sonja, Michael",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Androids’ Camp",
+    "summary": "Mika and 5B leave the camp after farewells. Sonja embraces 5B and asks them to care for each other; 16B stays behind.",
+    "details": "—",
+    "tags": [
+      "Return home"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 108",
+    "raw": [
+      "Spring 2469 (following day)",
+      "Exact offset unknown",
+      "Androids’ Camp",
+      "Chapter 20: Memories",
+      null,
+      "Mika and 5B leave the camp after farewells. Sonja embraces 5B and asks them to care for each other; 16B stays behind.",
+      "Mika, 5B, 16B, Sonja, Michael",
+      "Return home"
+    ]
+  },
+  {
+    "id": "row-109",
+    "row": 109,
+    "phase": "main",
+    "day": 109,
+    "day_label": "Exact offset unknown",
+    "date": "Spring 2469 (less than a week later)",
+    "time": "",
+    "chapter": "Chapter 20: Memories",
+    "chapterKeys": [
+      "chapter-20"
+    ],
+    "scene": "Meeting Lana and Misha again",
+    "characters": [
+      "Mika",
+      "5B",
+      "Lana",
+      "Misha"
+    ],
+    "charactersOriginal": "Mika, 5B, Lana, Misha",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Market Town",
+    "summary": "Mika and 5B reach Market Town in less than a week, refuel using their extended credits and meet Lana and Misha again.",
+    "details": "—",
+    "tags": [
+      "Reunion and return"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 109",
+    "raw": [
+      "Spring 2469 (less than a week later)",
+      "Exact offset unknown",
+      "Market Town",
+      "Chapter 20: Memories",
+      null,
+      "Mika and 5B reach Market Town in less than a week, refuel using their extended credits and meet Lana and Misha again.",
+      "Mika, 5B, Lana, Misha",
+      "Reunion and return"
+    ]
+  },
+  {
+    "id": "row-110",
+    "row": 110,
+    "phase": "main",
+    "day": 110,
+    "day_label": "Exact offset unknown",
+    "date": "Spring 2469 (final night before homecoming)",
+    "time": "",
+    "chapter": "Chapter 20: Memories",
+    "chapterKeys": [
+      "chapter-20"
+    ],
+    "scene": "The final night before homecoming",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Road from Market Town to Mika’s village",
+    "summary": "They leave the nearly empty trailer at the crossroads. 5B asks why Mika keeps helping her, then says she will miss him when he dies. They fall asleep holding hands.",
+    "details": "—",
+    "tags": [
+      "Memory and companionship"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 110",
+    "raw": [
+      "Spring 2469 (final night before homecoming)",
+      "Exact offset unknown",
+      "Road from Market Town to Mika’s village",
+      "Chapter 20: Memories",
+      null,
+      "They leave the nearly empty trailer at the crossroads. 5B asks why Mika keeps helping her, then says she will miss him when he dies. They fall asleep holding hands.",
+      "Mika, 5B",
+      "Memory and companionship"
+    ]
+  },
+  {
+    "id": "row-111",
+    "row": 111,
+    "phase": "main",
+    "day": 111,
+    "day_label": "Exact offset unknown",
+    "date": "Spring 2469 (following morning)",
+    "time": "",
+    "chapter": "Chapter 20: Memories",
+    "chapterKeys": [
+      "chapter-20"
+    ],
+    "scene": "5B has a home",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Mika’s village",
+    "summary": "Mika and 5B arrive home together. 5B recognises that she now has a home.",
+    "details": "—",
+    "tags": [
+      "Homecoming"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 111",
+    "raw": [
+      "Spring 2469 (following morning)",
+      "Exact offset unknown",
+      "Mika’s village",
+      "Chapter 20: Memories",
+      null,
+      "Mika and 5B arrive home together. 5B recognises that she now has a home.",
+      "Mika, 5B",
+      "Homecoming"
+    ]
+  },
+  {
+    "id": "row-112",
+    "row": 112,
+    "phase": "main",
+    "day": 112,
+    "day_label": "Exact offset unknown",
+    "date": "2488 or 2489 (five months before epilogue)",
+    "time": "",
+    "chapter": "Epilogue",
+    "chapterKeys": [
+      "epilogue"
+    ],
+    "scene": "Mika’s death",
+    "characters": [
+      "Mika",
+      "5B"
+    ],
+    "charactersOriginal": "Mika, 5B",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Mika’s village",
+    "summary": "Mika dies. 5B buries him beside his fellow villagers, after their many years together.",
+    "details": "—",
+    "tags": [
+      "Mika’s death"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 112",
+    "raw": [
+      "2488 or 2489 (five months before epilogue)",
+      "Exact offset unknown",
+      "Mika’s village",
+      "Epilogue",
+      null,
+      "Mika dies. 5B buries him beside his fellow villagers, after their many years together.",
+      "Mika, 5B",
+      "Mika’s death"
+    ]
+  },
+  {
+    "id": "row-113",
+    "row": 113,
+    "phase": "main",
+    "day": 113,
+    "day_label": "About +21 years",
+    "date": "2489",
+    "time": "",
+    "chapter": "Epilogue",
+    "chapterKeys": [
+      "epilogue"
+    ],
+    "scene": "The memories remain",
+    "characters": [
+      "5B",
+      "Sonja",
+      "16B"
+    ],
+    "charactersOriginal": "5B, Sonja; 16B (intended visit)",
+    "source": "Approximate / ranged date",
+    "bucket": "inferred",
+    "location": "Androids’ Camp, Central Asia",
+    "summary": "5B returns to visit 16B and the others, meets Sonja and reveals Mika died five months earlier. Now more expressive, she cherishes the memories they made together.",
+    "details": "—",
+    "tags": [
+      "Memory and legacy"
+    ],
+    "evidence": "TalesFromABrokenWorld_Timeline.xlsx · Story Timeline · row 113",
+    "raw": [
+      2489,
+      "About +21 years",
+      "Androids’ Camp, Central Asia",
+      "Epilogue",
+      null,
+      "5B returns to visit 16B and the others, meets Sonja and reveals Mika died five months earlier. Now more expressive, she cherishes the memories they made together.",
+      "5B, Sonja; 16B (intended visit)",
+      "Memory and legacy"
+    ]
+  }
+];
+
+const sourceColor = event => event.phase === 'past' ? 'var(--past)' : ({log:'var(--log)', narrative:'var(--narrative)', inferred:'var(--inferred)', planned:'var(--planned)'}[event.bucket]);
+const sourceBucket = event => event.bucket;
+const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const el = (id) => document.getElementById(id);
+const timeline = el("timeline");
+const search = el("search");
+const phaseFilter = el("phaseFilter");
+const sourceFilter = el("sourceFilter");
+const chapterFilter = el("chapterFilter");
+const chipsWrap = el("characterChips");
+const resultCount = el("resultCount");
+const resetBtn = el("resetBtn");
+
+let activeCharacters = new Set();
+
+function uniqueSorted(arr) {
+  return [...new Set(arr)].sort((a,b) => a.localeCompare(b));
+}
+
+function initialiseControls() {
+  el("statEvents").textContent = timelineData.length;
+
+  const chapters = [["background", "Background"], ["chapter-1", "Chapter 1: Desert findings"], ["chapter-2", "Chapter 2: Awakened"], ["chapter-3", "Chapter 3: Lost lady"], ["chapter-4", "Chapter 4: Hunt"], ["chapter-5", "Chapter 5: Digging in the sand"], ["chapter-6", "Chapter 6: Market Town"], ["chapter-7", "Chapter 7: The Androids’ Camp"], ["chapter-8", "Chapter 8: Different species"], ["chapter-9", "Chapter 9: Wandering again"], ["chapter-10", "Chapter 10: Last fuel point"], ["chapter-11", "Chapter 11: 5B’s stationing base"], ["chapter-12", "Chapter 12: Hidden in the city ruins"], ["chapter-13", "Chapter 13: The path gets harder"], ["chapter-14", "Chapter 14: An unexpected invite"], ["chapter-15", "Chapter 15: The Forbidden Zone"], ["chapter-16", "Chapter 16: An unknown world"], ["chapter-17", "Chapter 17: Reboot"], ["chapter-18", "Chapter 18: A wandering trio"], ["chapter-19", "Chapter 19: Back in the ‘old world’"], ["chapter-20", "Chapter 20: Memories"], ["bonus", "Bonus Story: Sonja’s red dress"], ["epilogue", "Epilogue"]];
+  chapters.forEach(([key,label]) => {
+    const opt = document.createElement('option');
+    opt.value = key; opt.textContent = label;
+    chapterFilter.appendChild(opt);
+  });
+
+  const chars = uniqueSorted(timelineData.flatMap(e => e.characters));
+  chars.forEach(ch => {
+    const btn = document.createElement("button");
+    btn.className = "chip";
+    btn.type = "button";
+    btn.textContent = ch;
+    btn.addEventListener("click", () => {
+      if (activeCharacters.has(ch)) activeCharacters.delete(ch);
+      else activeCharacters.add(ch);
+      btn.classList.toggle("active");
+      render();
+    });
+    chipsWrap.appendChild(btn);
+  });
+
+  const routeStrip = el("routeStrip");
+  for (let i=1; i<=20; i++) {
+    const div = document.createElement("div");
+    div.className = "chapter-node active";
+    div.title = "Chapter " + i;
+    routeStrip.appendChild(div);
+  }
+}
+
+function matchesSearch(e, query) {
+  if (!query) return true;
+  const blob = [
+    e.date, e.time, e.chapter, e.scene, e.location, e.summary, e.details,
+    e.source, e.day_label, e.charactersOriginal, e.evidence, ...(e.characters || []), ...(e.tags || [])
+  ].join(" ").toLowerCase();
+  return blob.includes(query.toLowerCase());
+}
+
+function timeRank(event) {
+  const t = (event.time || "").trim().toLowerCase();
+  if (!t || t === "—") return 9999;
+
+  const buckets = [
+    ["early morning", 6 * 60],
+    ["morning", 9 * 60],
+    ["before noon", 11 * 60],
+    ["noon", 12 * 60],
+    ["afternoon", 14 * 60],
+    ["late afternoon", 17 * 60],
+    ["evening", 19 * 60],
+    ["night", 22 * 60],
+    ["day", 12 * 60],
+    ["wait", 13 * 60]
+  ];
+  for (const [label, value] of buckets) {
+    if (t.includes(label)) return value;
+  }
+
+  const match = t.match(/(?:c\.\s*)?(\d{1,2})(?::(\d{2}))?(?::(\d{2}))?\s*(am|pm)?/i);
+  if (!match) return 9999;
+
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2] || "0", 10);
+  const meridian = match[4];
+
+  if (meridian === "pm" && hours !== 12) hours += 12;
+  if (meridian === "am" && hours === 12) hours = 0;
+
+  return hours * 60 + minutes;
+}
+
+function numericId(event) {
+  return parseInt((event.id || "").replace(/\D/g, ""), 10) || 0;
+}
+
+function filteredData() {
+  const q = search.value.trim();
+  return timelineData.filter(e => {
+    if (phaseFilter.value !== "all" && e.phase !== phaseFilter.value) return false;
+    if (chapterFilter.value !== "all" && !e.chapterKeys.includes(chapterFilter.value)) return false;
+    if (sourceFilter.value !== "all") {
+      if (sourceFilter.value === "past") {
+        if (e.phase !== "past") return false;
+      } else if (sourceBucket(e) !== sourceFilter.value) return false;
+    }
+    if (activeCharacters.size) {
+      const chars = new Set(e.characters);
+      let ok = false;
+      activeCharacters.forEach(c => { if (chars.has(c)) ok = true; });
+      if (!ok) return false;
+    }
+    return matchesSearch(e, q);
+  }).sort((a,b) => {
+    if (a.phase !== b.phase) return a.phase === "past" ? -1 : 1;
+    return a.row - b.row;
+  });
+}
+
+function badge(text, cls="") {
+  const span = document.createElement("span");
+  span.className = "badge " + cls;
+  span.textContent = text;
+  return span;
+}
+
+function render() {
+  const data = filteredData();
+  timeline.innerHTML = "";
+  resultCount.textContent = `${data.length} of ${timelineData.length} entries shown`;
+
+  if (!data.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "No timeline entries match the current filters.";
+    timeline.appendChild(empty);
+    return;
+  }
+
+  data.forEach(e => {
+    const color = sourceColor(e);
+    const article = document.createElement("article");
+    article.className = "event";
+    article.style.setProperty("--event-color", color);
+
+    const dateBox = document.createElement("aside");
+    dateBox.className = "date-box";
+    dateBox.innerHTML = `
+      <div>
+        <div class="day">${escapeHTML(e.day_label)}</div>
+        <div class="date">${escapeHTML(e.date)}</div>
+        <div class="time">${escapeHTML(e.time || "")}</div>
+      </div>
+    `;
+
+    const card = document.createElement("section");
+    card.className = "card";
+
+    const head = document.createElement("div");
+    head.className = "card-head";
+
+    const titleWrap = document.createElement("div");
+    titleWrap.innerHTML = `<h3>${escapeHTML(e.scene)}</h3><p class="summary">${escapeHTML(e.summary)}</p>`;
+
+    const actions = document.createElement("div");
+    actions.className = "card-actions";
+    const more = document.createElement("button");
+    more.className = "mini";
+    more.type = "button";
+    more.textContent = "Details";
+    more.setAttribute("aria-expanded", "false");
+    actions.appendChild(more);
+
+    head.appendChild(titleWrap);
+    head.appendChild(actions);
+
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.appendChild(badge(e.source, "source"));
+    meta.appendChild(badge(e.chapter));
+    meta.appendChild(badge(e.location));
+    e.tags.forEach(tag => meta.appendChild(badge(tag)));
+    e.characters.forEach(c => meta.appendChild(badge(c)));
+
+    const details = document.createElement("div");
+    details.className = "details";
+    details.innerHTML = `
+      <p><strong>Scene in workbook:</strong> ${escapeHTML(e.details)}</p>
+      <p><strong>Characters in workbook:</strong> ${escapeHTML(e.charactersOriginal || "—")}</p>
+      <p><strong>Day offset:</strong> ${escapeHTML(e.day_label)}</p>
+      <p><strong>Source:</strong> ${escapeHTML(e.evidence)}</p>
+      <p><strong>Arc / thread:</strong> ${escapeHTML((e.tags || []).join(", ") || "—")}</p>
+    `;
+
+    more.addEventListener("click", () => {
+      details.classList.toggle("open");
+      more.setAttribute("aria-expanded", String(details.classList.contains("open")));
+      more.textContent = details.classList.contains("open") ? "Hide" : "Details";
+    });
+
+    card.appendChild(head);
+    card.appendChild(meta);
+    card.appendChild(details);
+    article.appendChild(dateBox);
+    article.appendChild(card);
+    timeline.appendChild(article);
+  });
+}
+
+[search, phaseFilter, sourceFilter, chapterFilter].forEach(control => {
+  control.addEventListener("input", render);
+  control.addEventListener("change", render);
+});
+resetBtn.addEventListener("click", () => {
+  search.value = "";
+  phaseFilter.value = "all";
+  sourceFilter.value = "all";
+  chapterFilter.value = "all";
+  activeCharacters.clear();
+  [...chipsWrap.children].forEach(ch => ch.classList.remove("active"));
+  render();
+});
+
+initialiseControls();
+render();
+</script>
+</body>
+</html>
